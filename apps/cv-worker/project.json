@@ -1,0 +1,31 @@
+{
+  "name": "cv-worker",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/cv-worker/src",
+  "targets": {
+    "serve": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose up cv-worker",
+        "cwd": "."
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose run --rm cv-worker pytest",
+        "cwd": "."
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose run --rm cv-worker ruff check src tests",
+        "cwd": "."
+      }
+    }
+  },
+  "tags": []
+}

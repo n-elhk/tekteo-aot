@@ -1,0 +1,394 @@
+// ============================================================
+// Tekteo AO — Prisma schema
+// Plateforme de réponse aux appels d'offres publics IT
+// ============================================================
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum Role {
+  admin
+  redacteur
+  lecteur
+}
+
+enum ProjectStatus {
+  brouillon
+  en_cours
+  finalise
+  soumis
+}
+
+enum SectionStatus {
+  brouillon
+  valide
+}
+
+enum ExperienceLevel {
+  junior
+  confirme
+  senior
+  expert
+}
+
+enum BpuUnit {
+  jour
+  forfait
+  mois
+}
+
+enum BpuLineType {
+  bpu
+  dpgf
+}
+
+enum DocumentCategory {
+  dce
+  offre
+  candidature
+}
+
+enum GenerationModule {
+  section
+  fiche_poste
+  bpu
+  infographie
+  cv
+  ao_analyse
+}
+
+enum RemunerationType {
+  freelance
+  cdi
+  les_deux
+}
+
+enum CvImportStatus {
+  pending
+  processing
+  done
+  failed
+}
+
+// ============================================================
+// User (auth gérée par notre propre JWT, pas Supabase)
+// ============================================================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  fullName     String?  @map("full_name")
+  name         String?
+  role         Role     @default(redacteur)
+  refreshToken String?  @map("refresh_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projectsCreated   Project[]            @relation("ProjectCreator")
+  templatesCreated  SectionTemplate[]    @relation("TemplateCreator")
+  promptsUpdated    SystemPrompt[]       @relation("PromptUpdater")
+  generations       GenerationHistory[]  @relation("GenerationAuthor")
+  documentsUploaded ProjectDocument[]    @relation("DocumentUploader")
+  cvsCreated        ConsultantCv[]       @relation("CvCreator")
+  aoFavorites       AoFavorite[]
+  cvImportJobs      CvImportJob[]
+
+  @@map("users")
+}
+
+// ============================================================
+// Project — Appel d'offres
+// ============================================================
+
+model Project {
+  id              String        @id @default(uuid())
+  name            String
+  clientName      String        @map("client_name")
+  marketReference String?       @map("market_reference")
+  marketObject    String?       @map("market_object")
+  deadline        DateTime?     @db.Date
+  technologies    String[]      @default([])
+  durationMonths  Int?          @map("duration_months")
+  lots            String[]      @default([])
+  status          ProjectStatus @default(brouillon)
+  sourceAoId      String?       @map("source_ao_id")
+  createdById     String?       @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  createdBy   User?               @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  sections    Section[]
+  jobProfiles JobProfile[]
+  bpuLines    BpuLine[]
+  documents   ProjectDocument[]
+  generations GenerationHistory[]
+
+  @@map("projects")
+}
+
+// ============================================================
+// SectionTemplate — Modèle de section (avec prompt Claude)
+// ============================================================
+
+model SectionTemplate {
+  id             String   @id @default(uuid())
+  name           String
+  promptTemplate String   @map("prompt_template")
+  defaultContent String?  @map("default_content")
+  orderIndex     Int      @default(0) @map("order_index")
+  createdById    String?  @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  createdBy User?     @relation("TemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  sections  Section[]
+
+  @@map("section_templates")
+}
+
+// ============================================================
+// Section — Section d'un mémoire technique
+// ============================================================
+
+model Section {
+  id         String        @id @default(uuid())
+  projectId  String        @map("project_id")
+  templateId String?       @map("template_id")
+  title      String
+  content    String        @default("")
+  orderIndex Int           @default(0) @map("order_index")
+  status     SectionStatus @default(brouillon)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template SectionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("sections")
+}
+
+// ============================================================
+// SystemPrompt — Prompts globaux Claude
+// ============================================================
+
+model SystemPrompt {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  content     String
+  model       String   @default("claude-sonnet-4-6")
+  updatedById String?  @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  updatedBy User? @relation("PromptUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("system_prompts")
+}
+
+// ============================================================
+// GenerationHistory — Historique des générations IA
+// ============================================================
+
+model GenerationHistory {
+  id             String           @id @default(uuid())
+  projectId      String?          @map("project_id")
+  module         GenerationModule
+  inputData      Json?            @map("input_data")
+  outputContent  String?          @map("output_content")
+  modelUsed      String?          @map("model_used")
+  tokensUsed     Int?             @map("tokens_used")
+  generatedById  String?          @map("generated_by")
+  generatedAt    DateTime         @default(now()) @map("generated_at")
+
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  generatedBy User?    @relation("GenerationAuthor", fields: [generatedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([generatedById])
+  @@map("generation_history")
+}
+
+// ============================================================
+// JobProfile — Fiche de poste
+// ============================================================
+
+model JobProfile {
+  id                   String           @id @default(uuid())
+  projectId            String?          @map("project_id")
+  title                String
+  experienceLevel      ExperienceLevel  @map("experience_level")
+  requiredSkills       String[]         @default([]) @map("required_skills")
+  optionalSkills       String[]         @default([]) @map("optional_skills")
+  missions             String           @default("")
+  education            String           @default("")
+  location             String           @default("")
+  generatedContent     String           @default("") @map("generated_content")
+  status               SectionStatus    @default(brouillon)
+  boondmanagerUrl      String?          @map("boondmanager_url")
+  consultantName       String?          @map("consultant_name")
+  consultantTitle      String?          @map("consultant_title")
+  consultantYearsExp   Int?             @map("consultant_years_exp")
+  consultantSummary    String?          @map("consultant_summary")
+  reference            String?
+  marketContext        String?          @map("market_context")
+  missionType          String?          @map("mission_type")
+  duration             String?
+  remoteWork           String?          @map("remote_work")
+  startDate            String?          @map("start_date")
+  consultantStatus     String?          @map("consultant_status")
+  clientSector         String?          @map("client_sector")
+  specificRequirements String[]         @default([]) @map("specific_requirements")
+  tjmLow               String?          @map("tjm_low")
+  tjmHigh              String?          @map("tjm_high")
+  tjmRecommended       String?          @map("tjm_recommended")
+  salaryLow            String?          @map("salary_low")
+  salaryHigh           String?          @map("salary_high")
+  salaryRecommended    String?          @map("salary_recommended")
+  salaryWarning        String?          @map("salary_warning")
+  quantityNeeded       Int              @default(1) @map("quantity_needed")
+  remunerationType     RemunerationType? @map("remuneration_type")
+  cvId                 String?          @map("cv_id")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  project Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cv      ConsultantCv?  @relation(fields: [cvId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("job_profiles")
+}
+
+// ============================================================
+// PricingGrid — TJM de référence
+// ============================================================
+
+model PricingGrid {
+  id              String          @id @default(uuid())
+  profileTitle    String          @map("profile_title")
+  experienceLevel ExperienceLevel @map("experience_level")
+  dailyRate       Decimal         @db.Decimal(10, 2) @map("daily_rate")
+  region          String          @default("Île-de-France")
+  validFrom       DateTime        @default(now()) @db.Date @map("valid_from")
+  validTo         DateTime?       @db.Date @map("valid_to")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  @@map("pricing_grids")
+}
+
+// ============================================================
+// BpuLine — Ligne BPU/DPGF
+// ============================================================
+
+model BpuLine {
+  id              String      @id @default(uuid())
+  projectId       String      @map("project_id")
+  profileTitle    String      @map("profile_title")
+  experienceLevel String      @map("experience_level")
+  unit            BpuUnit     @default(jour)
+  quantity        Decimal     @db.Decimal(10, 2) @default(0)
+  unitPrice       Decimal     @db.Decimal(10, 2) @default(0) @map("unit_price")
+  lineType        BpuLineType @default(bpu) @map("line_type")
+  phase           String?
+  orderIndex      Int         @default(0) @map("order_index")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("bpu_lines")
+}
+
+// ============================================================
+// ProjectDocument — Documents DCE / Offre / Candidature
+// ============================================================
+
+model ProjectDocument {
+  id           String           @id @default(uuid())
+  projectId    String           @map("project_id")
+  fileName     String           @map("file_name")
+  fileType     String           @map("file_type") // contrôlé applicatif (Zod)
+  category     DocumentCategory @default(dce)
+  storagePath  String           @map("storage_path")
+  fileSize     Int?             @map("file_size")
+  uploadedById String?          @map("uploaded_by")
+  uploadedAt   DateTime         @default(now()) @map("uploaded_at")
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("project_documents")
+}
+
+// ============================================================
+// ConsultantCv — CV formaté (JSON)
+// ============================================================
+
+model ConsultantCv {
+  id              String   @id @default(uuid())
+  cvData          Json     @map("cv_data")
+  consultantName  String?  @map("consultant_name")
+  consultantTitle String?  @map("consultant_title")
+  createdById     String?  @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  createdBy   User?         @relation("CvCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  jobProfiles JobProfile[]
+  importJobs  CvImportJob[]
+
+  @@map("consultant_cvs")
+}
+
+// ============================================================
+// CvImportJob — Suivi des imports asynchrones (PDF/DOCX → CvData)
+// ============================================================
+
+model CvImportJob {
+  id            String         @id @default(uuid())
+  userId        String         @map("user_id")
+  status        CvImportStatus @default(pending)
+  templateId    String         @map("template_id")
+  inputPath     String         @map("input_path")
+  inputFilename String         @map("input_filename")
+  outputPath    String?        @map("output_path")
+  cvId          String?        @map("cv_id")
+  errorMessage  String?        @map("error_message")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt      @map("updated_at")
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cv   ConsultantCv? @relation(fields: [cvId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@map("cv_import_jobs")
+}
+
+// ============================================================
+// AoFavorite — Favoris d'annonces BOAMP
+// ============================================================
+
+model AoFavorite {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  aoId      String   @map("ao_id")
+  aoData    Json     @map("ao_data")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, aoId])
+  @@map("ao_favorites")
+}

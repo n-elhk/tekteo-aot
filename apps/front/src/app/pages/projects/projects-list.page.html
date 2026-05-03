@@ -1,0 +1,138 @@
+<div class="space-y-6">
+  <!-- En-tête -->
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-brand-700">Mes projets</p>
+      <h1 class="mt-1 text-3xl font-semibold tracking-tight text-surface-900">
+        Projets d'appels d'offres
+      </h1>
+      <p class="mt-1 text-sm text-surface-900/60">
+        @if (!isLoading()) {
+          {{ projects().length }} projet{{ projects().length > 1 ? 's' : '' }} au total.
+        } @else {
+          Chargement&hellip;
+        }
+      </p>
+    </div>
+    <a routerLink="/projects/new">
+      <app-button variant="primary">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Nouveau projet
+      </app-button>
+    </a>
+  </header>
+
+  <!-- Filtres -->
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <label class="relative flex-1 max-w-md">
+      <span class="sr-only">Rechercher un projet</span>
+      <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" />
+      </svg>
+      <input
+        type="search"
+        [value]="search()"
+        (input)="onSearchChange($any($event.target).value)"
+        placeholder="Rechercher par nom, client, référence..."
+        class="block w-full rounded-xl border border-surface-200 bg-white pl-9 pr-3 py-2.5 text-sm shadow-sm placeholder:text-surface-900/40 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      />
+    </label>
+    <label class="sm:w-56">
+      <span class="sr-only">Filtrer par statut</span>
+      <select
+        [value]="status()"
+        (change)="onStatusChange($any($event.target).value)"
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      >
+        @for (option of statusOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <!-- États -->
+  @if (errorMessage(); as msg) {
+    <app-card>
+      <div class="flex items-center justify-between gap-3" role="alert">
+        <p class="text-sm text-red-700">{{ msg }}</p>
+        <app-button variant="secondary" (click)="reload()">Réessayer</app-button>
+      </div>
+    </app-card>
+  } @else if (isLoading()) {
+    <div class="grid gap-3">
+      @for (placeholder of [1,2,3,4]; track placeholder) {
+        <div class="h-20 animate-pulse rounded-2xl bg-surface-100"></div>
+      }
+    </div>
+  } @else if (filtered().length === 0) {
+    <app-card>
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+          <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+          </svg>
+        </span>
+        <p class="mt-4 text-base font-medium text-surface-900">
+          @if (projects().length === 0) {
+            Aucun projet pour le moment.
+          } @else {
+            Aucun projet ne correspond à votre recherche.
+          }
+        </p>
+        <p class="mt-1 max-w-sm text-sm text-surface-900/60">
+          Créez votre premier projet d'appel d'offres pour démarrer une analyse&nbsp;IA collaborative.
+        </p>
+        @if (projects().length === 0) {
+          <a routerLink="/projects/new" class="mt-6">
+            <app-button variant="primary">Créer un projet</app-button>
+          </a>
+        }
+      </div>
+    </app-card>
+  } @else {
+    <ul class="grid gap-3">
+      @for (project of filtered(); track project.id) {
+        <li>
+          <a
+            [routerLink]="['/projects', project.id]"
+            class="group flex items-center gap-4 rounded-2xl border border-surface-200/70 bg-white px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.25)]"
+          >
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-700">
+              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h4M7 4h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-semibold text-surface-900 group-hover:text-brand-800">
+                {{ project.name }}
+              </p>
+              <p class="truncate text-sm text-surface-900/60">{{ project.clientName }}</p>
+              @if (project.marketReference) {
+                <p class="mt-0.5 truncate text-xs text-surface-900/40">
+                  Réf. {{ project.marketReference }}
+                </p>
+              }
+            </div>
+            <div class="flex shrink-0 items-center gap-3 text-sm">
+              @if (formatDeadline(project.deadline); as deadline) {
+                <span class="hidden items-center gap-1.5 text-surface-900/60 sm:inline-flex">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                  </svg>
+                  {{ deadline }}
+                </span>
+              }
+              <app-project-status-badge [status]="project.status" />
+              <svg viewBox="0 0 24 24" class="h-4 w-4 text-surface-900/30 transition group-hover:translate-x-0.5 group-hover:text-brand-700" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</div>

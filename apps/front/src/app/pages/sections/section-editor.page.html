@@ -1,0 +1,182 @@
+<div class="space-y-6">
+  <!-- Fil d'Ariane -->
+  <nav class="flex items-center gap-1 text-sm" aria-label="Fil d'Ariane">
+    <a routerLink="/projects" class="text-surface-900/60 hover:text-brand-700 transition">Projets</a>
+    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-surface-900/30" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+    <a [routerLink]="['/projects', id()]" class="text-surface-900/60 hover:text-brand-700 transition truncate max-w-xs">
+      @if (loadedSection(); as s) { {{ s.project.name }} } @else { Projet }
+    </a>
+    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-surface-900/30" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+    <span class="font-medium text-surface-900 truncate">
+      @if (loadedSection(); as s) { {{ s.title }} } @else { Section }
+    </span>
+  </nav>
+
+  @if (isLoading()) {
+    <div class="space-y-3">
+      <div class="h-8 w-2/3 animate-pulse rounded-xl bg-surface-100"></div>
+      <div class="h-64 animate-pulse rounded-2xl bg-surface-100"></div>
+    </div>
+  } @else if (hasError()) {
+    <app-card>
+      <p class="text-sm text-red-700" role="alert">
+        Impossible de charger cette section. Vérifiez l'URL ou retournez au projet.
+      </p>
+    </app-card>
+  } @else if (loadedSection(); as section) {
+    <header class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h1 class="text-3xl font-semibold tracking-tight text-surface-900">{{ section.title }}</h1>
+        <p class="mt-1 text-sm text-surface-900/60">
+          Client&nbsp;: <strong class="text-surface-900">{{ section.project.clientName }}</strong>
+          @if (section.template?.name; as templateName) {
+            · Modèle&nbsp;: {{ templateName }}
+          }
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <app-section-status-badge [status]="section.status" />
+        @if (canEdit()) {
+          <app-button variant="danger" size="sm" (click)="confirmDelete()">
+            Supprimer
+          </app-button>
+        }
+      </div>
+    </header>
+
+    <div class="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <!-- Colonne contenu -->
+      <app-card title="Contenu de la section">
+        <div cardAction>
+          <select
+            [value]="status()"
+            [disabled]="!canEdit()"
+            (change)="onStatusChange($any($event.target).value)"
+            class="rounded-lg border border-surface-200 bg-white px-2.5 py-1.5 text-xs font-medium text-surface-900/80 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+          >
+            <option value="brouillon">Brouillon</option>
+            <option value="valide">Validée</option>
+          </select>
+        </div>
+
+        <textarea
+          rows="18"
+          [value]="content()"
+          [readOnly]="!canEdit()"
+          (input)="onContentChange($any($event.target).value)"
+          placeholder="Rédigez le contenu de la section, ou utilisez la génération IA à droite."
+          class="block w-full resize-y rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 font-mono text-sm leading-relaxed text-surface-900 shadow-inner focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+        ></textarea>
+
+        <div class="mt-4 flex items-center justify-between">
+          <p class="text-xs text-surface-900/50">
+            {{ content().length }} caractères
+            @if (isDirty()) { · <span class="font-medium text-amber-700">Modifications non enregistrées</span> }
+          </p>
+          @if (canEdit()) {
+            <app-button
+              variant="primary"
+              size="sm"
+              [disabled]="!isDirty() || saving()"
+              [loading]="saving()"
+              (click)="save()"
+            >
+              Enregistrer
+            </app-button>
+          }
+        </div>
+      </app-card>
+
+      <!-- Colonne génération -->
+      <app-card title="Génération IA">
+        @if (canEdit()) {
+          <div class="space-y-4">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-sm font-medium text-surface-900">Instructions complémentaires</span>
+              <textarea
+                rows="5"
+                [value]="instructions()"
+                (input)="onInstructionsChange($any($event.target).value)"
+                placeholder="Ex. Insiste sur la sécurité et la maintenabilité..."
+                class="block w-full resize-y rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+              ></textarea>
+            </label>
+
+            <!-- Pièces jointes -->
+            <div class="space-y-2">
+              <p class="text-sm font-medium text-surface-900">Pièces jointes</p>
+              <p class="text-xs text-surface-900/50">PDF ou TXT, 5 Mo max, jusqu'à 5 fichiers.</p>
+              @if (attachments().length > 0) {
+                <ul class="space-y-1.5">
+                  @for (attachment of attachments(); track attachment.name; let i = $index) {
+                    <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-200 bg-white px-3 py-2 text-xs">
+                      <span class="truncate" [title]="attachment.name">📎 {{ attachment.name }}</span>
+                      <button
+                        type="button"
+                        (click)="removeAttachment(i)"
+                        class="rounded p-1 text-surface-900/40 hover:bg-surface-100 hover:text-red-600 transition"
+                        aria-label="Retirer la pièce jointe"
+                      >
+                        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18" />
+                        </svg>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+              <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-surface-300 bg-surface-50 px-3 py-2 text-xs font-medium text-surface-900/70 hover:border-brand-300 hover:bg-brand-50/50 hover:text-brand-700 transition">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79V19a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h6.21M16 3h5v5M21 3l-9 9" />
+                </svg>
+                Ajouter un fichier
+                <input
+                  type="file"
+                  multiple
+                  class="sr-only"
+                  [accept]="acceptedAttachmentMime"
+                  (change)="onFilesPicked($any($event.target))"
+                />
+              </label>
+            </div>
+
+            <!-- Actions IA -->
+            <div class="space-y-2 pt-2">
+              <app-button
+                variant="primary"
+                class="block w-full"
+                [disabled]="generating()"
+                [loading]="generating()"
+                (click)="generate(false)"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l2 4 4 2-4 2-2 4-2-4-4-2 4-2 2-4z" transform="translate(7 0)" />
+                </svg>
+                Générer le contenu
+              </app-button>
+              <app-button
+                variant="secondary"
+                class="block w-full"
+                [disabled]="generating() || content().length === 0"
+                (click)="generate(true)"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-3M20 15a8 8 0 01-14 3" />
+                </svg>
+                Ajuster le contenu actuel
+              </app-button>
+            </div>
+          </div>
+        } @else {
+          <p class="text-sm text-surface-900/60">
+            Vous n'avez pas les droits pour modifier cette section.
+          </p>
+        }
+      </app-card>
+    </div>
+  }
+</div>

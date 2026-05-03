@@ -1,0 +1,115 @@
+<div class="space-y-8">
+  <!-- En-tête -->
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-brand-700">Tableau de bord</p>
+      <h1 class="mt-1 text-3xl font-semibold tracking-tight text-surface-900">
+        {{ greeting() }}
+      </h1>
+      <p class="mt-1 text-sm text-surface-900/60">
+        Voici un aperçu de l'activité de votre équipe sur Tekteo.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <app-button variant="secondary" (click)="openDemoDialog()">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Voir les nouveautés
+      </app-button>
+      <app-button variant="primary">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Nouveau projet
+      </app-button>
+    </div>
+  </header>
+
+  <!-- Statistiques -->
+  <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    @for (tile of tiles; track tile.label) {
+      <app-card>
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm font-medium text-surface-900/60">{{ tile.label }}</p>
+            <p class="mt-2 text-3xl font-semibold text-surface-900">{{ tile.value }}</p>
+          </div>
+          <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-700">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="tile.icon" />
+            </svg>
+          </span>
+        </div>
+        <p
+          class="mt-4 inline-flex items-center gap-1 text-xs font-medium"
+          [class]="tile.trend === 'up' ? 'text-emerald-600' : tile.trend === 'down' ? 'text-red-600' : 'text-surface-900/60'"
+        >
+          @switch (tile.trend) {
+            @case ('up') {
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+              </svg>
+            }
+            @case ('down') {
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            }
+            @default {
+              <span class="h-0.5 w-2.5 bg-current rounded-full" aria-hidden="true"></span>
+            }
+          }
+          {{ tile.delta }}
+        </p>
+      </app-card>
+    }
+  </section>
+
+  <!-- Section secondaire -->
+  <section class="grid gap-4 lg:grid-cols-3">
+    <app-card title="Activité récente" class="lg:col-span-2">
+      <div cardAction>
+        <button type="button" class="text-xs font-medium text-brand-700 hover:text-brand-800">
+          Tout voir
+        </button>
+      </div>
+      <ul class="divide-y divide-surface-200/70">
+        @for (entry of activity; track entry.target) {
+          <li class="flex items-center gap-3 py-3 text-sm">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-100 to-brand-200 text-xs font-semibold text-brand-800">
+              {{ entry.who[0] }}
+            </span>
+            <p class="flex-1 truncate text-surface-900/80">
+              <strong class="font-semibold text-surface-900">{{ entry.who }}</strong>
+              {{ entry.what }}
+              <span class="font-medium text-brand-700">{{ entry.target }}</span>
+            </p>
+            <span class="shrink-0 text-xs text-surface-900/50">{{ entry.when }}</span>
+          </li>
+        }
+      </ul>
+    </app-card>
+
+    <app-card title="Démarrer rapidement">
+      <ul class="space-y-3">
+        @for (cta of quickActions; track cta.label) {
+          <li>
+            <button
+              type="button"
+              class="group flex w-full items-center justify-between gap-3 rounded-xl border border-surface-200 bg-white px-4 py-3 text-left transition hover:border-brand-300 hover:bg-brand-50/50"
+            >
+              <div>
+                <p class="text-sm font-medium text-surface-900">{{ cta.label }}</p>
+                <p class="text-xs text-surface-900/60">{{ cta.description }}</p>
+              </div>
+              <svg viewBox="0 0 24 24" class="h-4 w-4 text-surface-900/40 group-hover:text-brand-700 transition" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </li>
+        }
+      </ul>
+    </app-card>
+  </section>
+</div>

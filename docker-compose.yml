@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tekteo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tekteo
+      POSTGRES_PASSWORD: tekteo
+      POSTGRES_DB: tekteo
+    ports:
+      - '5432:5432'
+    volumes:
+      - tekteo-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tekteo -d tekteo']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tekteo-redis
+    restart: unless-stopped
+    command: redis-server --save '' --appendonly no
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ollama:
+    # Image officielle Ollama. Tourne en CPU par défaut.
+    # Pour activer le GPU NVIDIA, ajouter une section deploy.resources.devices
+    # (cf. https://hub.docker.com/r/ollama/ollama).
+    image: ollama/ollama:latest
+    container_name: tekteo-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_DEBUG: '1'
+    ports:
+      - '11434:11434'
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ['CMD', 'ollama', 'list']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cv-worker:
+    build:
+      context: ./apps/cv-worker
+      dockerfile: Dockerfile
+      target: dev
+    container_name: tekteo-cv-worker
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      LLM_BASE_URL: http://ollama:11434/v1
+      LLM_MODEL: ${LLM_MODEL:-mistral:latest}
+      LLM_API_KEY: not-needed
+      LLM_NUM_CTX: ${LLM_NUM_CTX:-8192}
+      UPLOADS_ROOT: /data/uploads
+      TEMPLATES_ROOT: /data/templates
+    volumes:
+      - ./apps/cv-worker/src:/app/src
+      - ./apps/cv-worker/tests:/app/tests
+      - ./apps/api/uploads:/data/uploads
+      - ./apps/api/templates:/data/templates:ro
+    depends_on:
+      - ollama
+
+volumes:
+  tekteo-pg:
+  ollama-data:

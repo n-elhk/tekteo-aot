@@ -1,0 +1,110 @@
+<div class="space-y-6">
+  <!-- Fil d'Ariane -->
+  <nav class="flex items-center gap-1 text-sm" aria-label="Fil d'Ariane">
+    <a routerLink="/admin" class="text-surface-900/60 hover:text-brand-700 transition">Administration</a>
+    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-surface-900/30" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+    <span class="font-medium text-surface-900">Prompts système</span>
+  </nav>
+
+  <header>
+    <h1 class="text-3xl font-semibold tracking-tight text-surface-900">Prompts système</h1>
+    <p class="mt-1 text-sm text-surface-900/60">
+      Configurez les invites IA utilisées par les modules de génération.
+    </p>
+  </header>
+
+  @if (isLoading()) {
+    <div class="grid gap-3 lg:grid-cols-[260px_1fr]">
+      <div class="h-64 animate-pulse rounded-2xl bg-surface-100"></div>
+      <div class="h-64 animate-pulse rounded-2xl bg-surface-100"></div>
+    </div>
+  } @else if (hasError()) {
+    <app-card>
+      <p class="text-sm text-red-700" role="alert">Impossible de charger les prompts.</p>
+    </app-card>
+  } @else if (prompts().length === 0) {
+    <app-card>
+      <p class="py-8 text-center text-sm text-surface-900/60">
+        Aucun prompt système n'a encore été initialisé.
+      </p>
+    </app-card>
+  } @else {
+    <div class="grid gap-4 lg:grid-cols-[260px_1fr]">
+      <!-- Liste -->
+      <app-card title="Prompts disponibles">
+        <ul class="space-y-1">
+          @for (prompt of prompts(); track prompt.name) {
+            <li>
+              <button
+                type="button"
+                (click)="select(prompt.name)"
+                class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition"
+                [class]="
+                  selectedName() === prompt.name
+                    ? 'bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-200'
+                    : 'text-surface-900 hover:bg-surface-100'
+                "
+              >
+                <span class="truncate font-medium">{{ prompt.name }}</span>
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </li>
+          }
+        </ul>
+      </app-card>
+
+      <!-- Édition -->
+      @if (selected(); as prompt) {
+        <app-card [title]="prompt.name">
+          <div cardAction>
+            <span class="text-xs text-surface-900/50">
+              Mis à jour {{ prompt.updatedAt | date: 'dd MMM y, HH:mm' }}
+            </span>
+          </div>
+
+          <div class="space-y-4">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-sm font-medium text-surface-900">Modèle Claude</span>
+              <input
+                type="text"
+                [value]="model()"
+                (input)="onModelChange($any($event.target).value)"
+                class="block w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+                placeholder="claude-sonnet-4-6"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1.5">
+              <span class="text-sm font-medium text-surface-900">Contenu du prompt</span>
+              <textarea
+                rows="18"
+                [value]="content()"
+                (input)="onContentChange($any($event.target).value)"
+                class="block w-full resize-y rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 font-mono text-sm leading-relaxed text-surface-900 shadow-inner focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+              ></textarea>
+              <p class="text-xs text-surface-900/50">
+                {{ content().length }} caractères
+                @if (isDirty()) { · <span class="font-medium text-amber-700">Modifications non enregistrées</span> }
+              </p>
+            </label>
+
+            <div class="flex justify-end">
+              <app-button
+                variant="primary"
+                [disabled]="!isDirty() || saving()"
+                [loading]="saving()"
+                (click)="save()"
+              >
+                Enregistrer le prompt
+              </app-button>
+            </div>
+          </div>
+        </app-card>
+      }
+    </div>
+  }
+</div>

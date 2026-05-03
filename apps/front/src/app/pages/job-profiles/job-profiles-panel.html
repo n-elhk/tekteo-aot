@@ -1,0 +1,121 @@
+<app-card title="Fiches de poste">
+  <div cardAction class="flex items-center gap-2">
+    @if (canEdit() && profiles().length > 0) {
+      @if (selectedCount() > 0) {
+        <button
+          type="button"
+          (click)="clearSelection()"
+          class="text-xs font-medium text-surface-900/60 hover:text-brand-700 transition"
+        >
+          Tout désélectionner
+        </button>
+        <app-button
+          variant="primary"
+          size="sm"
+          [disabled]="generating()"
+          [loading]="generating()"
+          (click)="generateSelected()"
+        >
+          <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l2 4 4 2-4 2-2 4-2-4-4-2 4-2 2-4z" transform="translate(7 0)" />
+          </svg>
+          Générer ({{ selectedCount() }})
+        </app-button>
+      }
+    }
+    @if (canEdit()) {
+      <app-button variant="secondary" size="sm" (click)="openCreate()">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Ajouter
+      </app-button>
+    }
+  </div>
+
+  @if (isLoading()) {
+    <ul class="space-y-2">
+      @for (placeholder of [1,2,3]; track placeholder) {
+        <li class="h-20 animate-pulse rounded-xl bg-surface-100"></li>
+      }
+    </ul>
+  } @else if (hasError()) {
+    <p class="text-sm text-red-700" role="alert">
+      Impossible de charger les fiches de poste.
+    </p>
+  } @else if (profiles().length === 0) {
+    <div class="rounded-xl border border-dashed border-surface-200 bg-surface-50/60 px-4 py-8 text-center">
+      <p class="text-sm font-medium text-surface-900">Aucune fiche de poste.</p>
+      <p class="mt-1 text-xs text-surface-900/60">
+        Décrivez les profils consultants attendus pour cet appel d'offres.
+      </p>
+    </div>
+  } @else {
+    @if (canEdit() && selectedCount() === 0) {
+      <button
+        type="button"
+        (click)="selectAll()"
+        class="mb-2 text-xs font-medium text-surface-900/60 hover:text-brand-700 transition"
+      >
+        Tout sélectionner pour la génération
+      </button>
+    }
+    <ul class="space-y-2">
+      @for (profile of profiles(); track profile.id) {
+        <li>
+          <div
+            class="group flex items-center gap-4 rounded-xl border bg-white px-4 py-3 transition"
+            [class]="
+              selected().has(profile.id)
+                ? 'border-brand-400 bg-brand-50/40 ring-2 ring-brand-500/20'
+                : 'border-surface-200/70 hover:border-brand-300 hover:bg-brand-50/30'
+            "
+          >
+            @if (canEdit()) {
+              <input
+                type="checkbox"
+                class="h-4 w-4 shrink-0 rounded border-surface-300 text-brand-600 focus:ring-brand-500/30"
+                [checked]="selected().has(profile.id)"
+                (change)="toggle(profile.id)"
+                [attr.aria-label]="'Sélectionner ' + profile.title"
+              />
+            }
+            <a
+              [routerLink]="['/projects', projectId(), 'job-profiles', profile.id]"
+              class="flex flex-1 flex-wrap items-center gap-x-3 gap-y-2"
+            >
+              <div class="min-w-0 flex-1 basis-full sm:basis-0">
+                <p class="truncate text-sm font-semibold text-surface-900 group-hover:text-brand-800">
+                  {{ profile.title }}
+                </p>
+                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-surface-900/60">
+                  @if (profile.location) {
+                    <span class="inline-flex items-center gap-1">
+                      <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21s-7-6.5-7-12a7 7 0 0114 0c0 5.5-7 12-7 12zm0-9a3 3 0 100-6 3 3 0 000 6z" />
+                      </svg>
+                      {{ profile.location }}
+                    </span>
+                  }
+                  @if (profile.quantityNeeded > 1) {
+                    <span class="inline-flex items-center gap-1">
+                      × {{ profile.quantityNeeded }}
+                    </span>
+                  }
+                  @if (profile.requiredSkills.length > 0) {
+                    <span class="truncate">{{ profile.requiredSkills.slice(0, 4).join(' · ') }}</span>
+                  }
+                </div>
+              </div>
+              <app-experience-level-badge [level]="profile.experienceLevel" />
+              <app-section-status-badge [status]="profile.status" />
+              <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-surface-900/30 transition group-hover:translate-x-0.5 group-hover:text-brand-700" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</app-card>

@@ -1,0 +1,147 @@
+<div class="space-y-6">
+  <!-- En-tête -->
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-sm font-medium text-brand-700">Historique</p>
+      <h1 class="text-3xl font-semibold tracking-tight text-surface-900">
+        Analyses d'appels d'offres
+      </h1>
+      <p class="mt-1 text-sm text-surface-900/60">
+        @if (isAdmin()) {
+          Toutes les analyses IA effectuées sur la plateforme.
+        } @else {
+          Cette section est réservée aux administrateurs.
+        }
+      </p>
+    </div>
+    <a routerLink="/veille-ao">
+      <app-button variant="secondary">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" />
+        </svg>
+        Nouvelle veille
+      </app-button>
+    </a>
+  </header>
+
+  @if (!isAdmin()) {
+    <app-card>
+      <div class="flex flex-col items-center justify-center py-16 text-center">
+        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100 text-surface-900/40">
+          <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0-1.66-1.34-3-3-3s-3 1.34-3 3 1.34 3 3 3M12 11c0-1.66 1.34-3 3-3s3 1.34 3 3-1.34 3-3 3M12 11v8m-6-4h12" />
+          </svg>
+        </span>
+        <p class="mt-4 text-base font-medium text-surface-900">Accès restreint</p>
+        <p class="mt-1 max-w-sm text-sm text-surface-900/60">
+          La consultation de l'historique global est réservée aux administrateurs.
+          Demandez à votre administrateur de vous accorder ce rôle si nécessaire.
+        </p>
+      </div>
+    </app-card>
+  } @else {
+    <!-- Tri -->
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm text-surface-900/60">{{ total() }} analyses au total</p>
+      <label class="inline-flex items-center gap-2 text-sm">
+        <span class="text-surface-900/60">Trier par</span>
+        <select
+          [value]="sort()"
+          (change)="onSortChange($any($event.target).value)"
+          class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+        >
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    @if (hasError()) {
+      <app-card>
+        <p class="text-sm text-red-700" role="alert">
+          Impossible de charger l'historique. Réessayez dans un instant.
+        </p>
+      </app-card>
+    } @else if (isLoading()) {
+      <ul class="space-y-2">
+        @for (placeholder of [1,2,3,4,5]; track placeholder) {
+          <li class="h-20 animate-pulse rounded-2xl bg-surface-100"></li>
+        }
+      </ul>
+    } @else if (sorted().length === 0) {
+      <app-card>
+        <p class="py-8 text-center text-sm text-surface-900/60">
+          Aucune analyse n'a encore été enregistrée. Lancez une analyse depuis la veille pour commencer.
+        </p>
+      </app-card>
+    } @else {
+      <ul class="space-y-2">
+        @for (item of sorted(); track item.entry.id) {
+          <li>
+            <button
+              type="button"
+              (click)="open(item)"
+              class="group flex w-full items-center gap-4 rounded-2xl border border-surface-200/70 bg-white px-5 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.25)]"
+            >
+              <span
+                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold ring-2 ring-inset ring-white/40"
+                [class]="scoreClasses(item.score)"
+              >
+                @if (item.score !== null) { {{ item.score }} } @else { — }
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-semibold text-surface-900 group-hover:text-brand-800">
+                  {{ item.title }}
+                </p>
+                @if (item.buyer) {
+                  <p class="truncate text-xs text-surface-900/60">{{ item.buyer }}</p>
+                }
+                <p class="mt-1 text-xs text-surface-900/40">
+                  {{ item.entry.generatedAt | date: 'dd MMM y, HH:mm' }}
+                  @if (item.entry.tokensUsed) {
+                    · {{ item.entry.tokensUsed }} tokens
+                  }
+                  @if (item.entry.generatedBy?.fullName ?? item.entry.generatedBy?.email; as author) {
+                    · par {{ author }}
+                  }
+                </p>
+              </div>
+              @if (item.recommendation; as reco) {
+                <app-recommendation-badge [recommendation]="reco" />
+              }
+              <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-surface-900/30 transition group-hover:translate-x-0.5 group-hover:text-brand-700" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </li>
+        }
+      </ul>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+          <button
+            type="button"
+            [disabled]="page() <= 1"
+            (click)="goToPage(page() - 1)"
+            class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900 hover:border-brand-300 hover:text-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            ← Précédent
+          </button>
+          <span class="text-sm text-surface-900/70">
+            Page {{ page() }} sur {{ totalPages() }}
+          </span>
+          <button
+            type="button"
+            [disabled]="page() >= totalPages()"
+            (click)="goToPage(page() + 1)"
+            class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900 hover:border-brand-300 hover:text-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            Suivant →
+          </button>
+        </nav>
+      }
+    }
+  }
+</div>

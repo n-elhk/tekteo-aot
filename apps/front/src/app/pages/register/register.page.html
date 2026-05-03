@@ -1,0 +1,166 @@
+<div class="min-h-dvh grid lg:grid-cols-2">
+  <!-- Colonne marketing -->
+  <section class="relative hidden overflow-hidden bg-surface-950 text-white lg:flex lg:items-center lg:justify-center p-12">
+    <div class="absolute -top-32 -left-32 h-[420px] w-[420px] rounded-full bg-brand-500/30 blur-3xl"></div>
+    <div class="absolute -bottom-40 -right-24 h-[480px] w-[480px] rounded-full bg-accent-500/25 blur-3xl"></div>
+    <div class="absolute inset-0 opacity-[0.07]"
+         style="background-image: linear-gradient(rgb(255 255 255 / 0.6) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.6) 1px, transparent 1px); background-size: 48px 48px;"></div>
+
+    <div class="relative max-w-md">
+      <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
+        <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Plateforme Tekteo · v1.0
+      </div>
+      <h1 class="mt-8 text-4xl font-semibold leading-tight tracking-tight text-white">
+        Rejoignez l'équipe
+        <span class="gradient-text">en quelques secondes.</span>
+      </h1>
+      <p class="mt-4 text-base leading-relaxed text-white/70">
+        Créez votre compte pour accéder à la plateforme et collaborer
+        avec votre équipe sur les appels d'offres.
+      </p>
+
+      <ul class="mt-10 space-y-3 text-sm text-white/80">
+        @for (feature of features; track feature) {
+          <li class="flex items-center gap-3">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-emerald-300">
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5L20 7" />
+              </svg>
+            </span>
+            {{ feature }}
+          </li>
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- Colonne formulaire -->
+  <section class="flex items-center justify-center px-6 py-10 lg:px-12">
+    <div class="w-full max-w-md">
+      <div class="flex items-center gap-3 lg:hidden mb-8">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-accent-500 text-white shadow-glow font-display text-lg font-bold">
+          T
+        </span>
+        <span class="font-semibold text-surface-900">Tekteo</span>
+      </div>
+
+      <h2 class="text-2xl font-semibold tracking-tight text-surface-900">Créer un compte</h2>
+      <p class="mt-2 text-sm text-surface-900/60">
+        Vous avez déjà un compte&nbsp;?
+        <a routerLink="/login" class="font-medium text-brand-700 hover:text-brand-800">Connectez-vous</a>.
+      </p>
+
+      <form
+        [formRoot]="registerForm"
+        (submit)="onSubmit()"
+        novalidate
+        class="mt-8 space-y-5"
+      >
+        <!-- Nom -->
+        <div class="space-y-1.5">
+          <label for="name" class="block text-sm font-medium text-surface-900">Nom complet</label>
+          <input
+            id="name"
+            type="text"
+            autocomplete="name"
+            [formField]="registerForm.name"
+            class="block w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-surface-900 shadow-sm placeholder:text-surface-900/40 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+            placeholder="Jean Dupont"
+          />
+          @if (registerForm.name().touched() && registerForm.name().errors().length > 0) {
+            <p class="text-xs font-medium text-red-600">
+              {{ registerForm.name().errors()[0].message }}
+            </p>
+          }
+        </div>
+
+        <!-- Email -->
+        <div class="space-y-1.5">
+          <label for="email" class="block text-sm font-medium text-surface-900">Adresse e-mail</label>
+          <input
+            id="email"
+            type="email"
+            autocomplete="email"
+            [formField]="registerForm.email"
+            class="block w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-surface-900 shadow-sm placeholder:text-surface-900/40 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+            placeholder="vous@entreprise.fr"
+          />
+          @if (registerForm.email().touched() && registerForm.email().errors().length > 0) {
+            <p class="text-xs font-medium text-red-600">
+              {{ registerForm.email().errors()[0].message }}
+            </p>
+          }
+        </div>
+
+        <!-- Mot de passe -->
+        <div class="space-y-1.5">
+          <label for="password" class="block text-sm font-medium text-surface-900">Mot de passe</label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="new-password"
+            [formField]="registerForm.password"
+            class="block w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-surface-900 shadow-sm placeholder:text-surface-900/40 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+            placeholder="••••••••"
+          />
+          @if (registerForm.password().touched() && registerForm.password().errors().length > 0) {
+            <p class="text-xs font-medium text-red-600">
+              {{ registerForm.password().errors()[0].message }}
+            </p>
+          }
+        </div>
+
+        <!-- Confirmation -->
+        <div class="space-y-1.5">
+          <label for="confirmPassword" class="block text-sm font-medium text-surface-900">Confirmer le mot de passe</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            [formField]="registerForm.confirmPassword"
+            class="block w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-surface-900 shadow-sm placeholder:text-surface-900/40 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+            placeholder="••••••••"
+          />
+          @if (registerForm.confirmPassword().touched() && registerForm.confirmPassword().errors().length > 0) {
+            <p class="text-xs font-medium text-red-600">
+              {{ registerForm.confirmPassword().errors()[0].message }}
+            </p>
+          }
+          @if (
+            registerForm.confirmPassword().touched() &&
+            registerForm.confirmPassword().errors().length === 0 &&
+            !passwordsMatch()
+          ) {
+            <p class="text-xs font-medium text-red-600">
+              Les mots de passe ne correspondent pas.
+            </p>
+          }
+        </div>
+
+        <!-- Erreur serveur -->
+        @if (serverError(); as err) {
+          <div class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            {{ err }}
+          </div>
+        }
+
+        <app-button
+          type="submit"
+          variant="primary"
+          size="lg"
+          [disabled]="!canSubmit()"
+          [loading]="registerForm().submitting()"
+          class="block w-full"
+        >
+          Créer mon compte
+        </app-button>
+      </form>
+
+      <p class="mt-8 text-xs text-surface-900/50 text-center">
+        En créant un compte, vous acceptez les
+        <a href="#" class="underline hover:text-surface-900">conditions d'utilisation</a>.
+      </p>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,60 @@
+<app-card title="Sections du projet">
+  <div cardAction>
+    @if (canEdit()) {
+      <app-button variant="secondary" size="sm" (click)="openCreate()">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Ajouter
+      </app-button>
+    }
+  </div>
+
+  @if (isLoading()) {
+    <ul class="space-y-2">
+      @for (placeholder of [1,2,3]; track placeholder) {
+        <li class="h-14 animate-pulse rounded-xl bg-surface-100"></li>
+      }
+    </ul>
+  } @else if (hasError()) {
+    <p class="text-sm text-red-700" role="alert">
+      Impossible de charger les sections.
+    </p>
+  } @else if (sections().length === 0) {
+    <div class="rounded-xl border border-dashed border-surface-200 bg-surface-50/60 px-4 py-8 text-center">
+      <p class="text-sm font-medium text-surface-900">Aucune section pour ce projet.</p>
+      <p class="mt-1 text-xs text-surface-900/60">
+        Créez une section pour structurer votre réponse à l'appel d'offres.
+      </p>
+    </div>
+  } @else {
+    <ol class="space-y-2">
+      @for (section of sections(); track section.id; let index = $index) {
+        <li>
+          <a
+            [routerLink]="['/projects', projectId(), 'sections', section.id]"
+            class="group flex items-center gap-4 rounded-xl border border-surface-200/70 bg-white px-4 py-3 transition hover:border-brand-300 hover:bg-brand-50/40"
+          >
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-xs font-semibold text-surface-900/70 group-hover:bg-brand-100 group-hover:text-brand-800">
+              {{ index + 1 }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold text-surface-900 group-hover:text-brand-800">
+                {{ section.title }}
+              </p>
+              @if (section.template?.name; as templateName) {
+                <p class="truncate text-xs text-surface-900/50">
+                  Modèle&nbsp;: {{ templateName }}
+                </p>
+              }
+            </div>
+            <app-section-status-badge [status]="section.status" />
+            <svg viewBox="0 0 24 24" class="h-4 w-4 text-surface-900/30 transition group-hover:translate-x-0.5 group-hover:text-brand-700" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        </li>
+      }
+    </ol>
+  }
+</app-card>

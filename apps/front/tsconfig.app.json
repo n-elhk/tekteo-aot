@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "types": [],
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "emitDeclarationOnly": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
+  "references": [
+    {
+      "path": "../../libs/shared/schemas/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/shared/types/tsconfig.lib.json"
+    }
+  ]
+}

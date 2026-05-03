@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+@import '@angular/cdk/overlay-prebuilt.css';
+
+/* ----------------------------------------------------------
+   Design tokens — Tekteo
+   Couleurs, typographies, animations partagées.
+   ---------------------------------------------------------- */
+@theme {
+  --font-sans:
+    'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #d9e6ff;
+  --color-brand-200: #b8cfff;
+  --color-brand-300: #8aafff;
+  --color-brand-400: #5a86ff;
+  --color-brand-500: #3b63ff;
+  --color-brand-600: #2545e8;
+  --color-brand-700: #1d34b8;
+  --color-brand-800: #1a2e92;
+  --color-brand-900: #1a2c75;
+  --color-brand-950: #111a47;
+
+  --color-accent-400: #ffae3d;
+  --color-accent-500: #ff8a14;
+  --color-accent-600: #e36b00;
+
+  --color-surface-0: #ffffff;
+  --color-surface-50: #f7f8fb;
+  --color-surface-100: #eef0f6;
+  --color-surface-200: #e2e6f0;
+  --color-surface-900: #0c1226;
+  --color-surface-950: #060a1a;
+
+  --shadow-glow: 0 18px 40px -16px rgb(59 99 255 / 0.45);
+  --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.6) inset, 0 12px 30px -12px rgb(15 23 42 / 0.18);
+
+  --radius-pill: 9999px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 600px at 90% -10%, rgb(59 99 255 / 0.12), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(255 138 20 / 0.10), transparent 60%),
+    var(--color-surface-50);
+  color: var(--color-surface-900);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Accessibilité : focus visible par défaut */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Curseur explicite pour les contrôles interactifs */
+:is(button, select):not(:disabled) {
+  cursor: pointer;
+}
+
+:is(button, select):disabled {
+  cursor: not-allowed;
+}
+
+/* Réduction des animations si l'utilisateur le demande */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ----------------------------------------------------------
+   Animations partagées
+   ---------------------------------------------------------- */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  70% { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ----------------------------------------------------------
+   Utilitaires applicatifs
+   ---------------------------------------------------------- */
+@utility surface-card {
+  background: rgb(255 255 255 / 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgb(255 255 255 / 0.5);
+  box-shadow: var(--shadow-card);
+}
+
+@utility gradient-text {
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-accent-500));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* ----------------------------------------------------------
+   CDK Dialog — habillage par défaut
+   ---------------------------------------------------------- */
+.app-dialog__backdrop {
+  background: rgb(6 10 26 / 0.55);
+  backdrop-filter: blur(6px);
+  animation: app-fade-in 180ms ease-out;
+}
+
+.app-dialog__panel {
+  display: block;
+  max-width: min(92vw, 560px);
+  margin: 1.5rem;
+  animation: app-pop-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes app-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes app-pop-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

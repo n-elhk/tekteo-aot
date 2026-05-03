@@ -1,0 +1,141 @@
+<div class="space-y-6">
+  <a
+    routerLink="/projects"
+    class="inline-flex items-center gap-1.5 text-sm font-medium text-surface-900/60 hover:text-brand-700 transition"
+  >
+    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+    Retour aux projets
+  </a>
+
+  @if (isLoading()) {
+    <div class="space-y-3">
+      <div class="h-8 w-2/3 animate-pulse rounded-xl bg-surface-100"></div>
+      <div class="h-32 animate-pulse rounded-2xl bg-surface-100"></div>
+      <div class="h-32 animate-pulse rounded-2xl bg-surface-100"></div>
+    </div>
+  } @else if (hasError()) {
+    <app-card>
+      <div class="space-y-2 text-center" role="alert">
+        <p class="font-semibold text-surface-900">Projet introuvable</p>
+        <p class="text-sm text-surface-900/60">
+          Vérifiez l'URL ou retournez à la liste des projets.
+        </p>
+      </div>
+    </app-card>
+  } @else if (project(); as p) {
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <app-project-status-badge [status]="p.status" />
+          @if (p.marketReference) {
+            <span class="rounded-full bg-surface-100 px-2.5 py-1 text-xs font-medium text-surface-900/70">
+              Réf. {{ p.marketReference }}
+            </span>
+          }
+        </div>
+        <h1 class="text-3xl font-semibold tracking-tight text-surface-900">{{ p.name }}</h1>
+        <p class="text-sm text-surface-900/60">
+          Client&nbsp;: <strong class="text-surface-900">{{ p.clientName }}</strong>
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        @if (canEdit()) {
+          <app-button variant="secondary">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5h2m-1 0v14m-7-7h14" />
+            </svg>
+            Modifier
+          </app-button>
+        }
+        @if (isAdmin()) {
+          <app-button variant="danger" (click)="deleteProject()">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M4 7h16" />
+            </svg>
+            Supprimer
+          </app-button>
+        }
+      </div>
+    </header>
+
+    <section class="grid gap-4 lg:grid-cols-3">
+      <app-card title="Informations" class="lg:col-span-2">
+        <dl class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wider text-surface-900/50">Client</dt>
+            <dd class="mt-1 text-sm text-surface-900">{{ p.clientName }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wider text-surface-900/50">Date limite</dt>
+            <dd class="mt-1 text-sm text-surface-900">
+              {{ (p.deadline | date: 'dd MMMM y') ?? 'Non précisée' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wider text-surface-900/50">Durée</dt>
+            <dd class="mt-1 text-sm text-surface-900">
+              @if (p.durationMonths) {
+                {{ p.durationMonths }} mois
+              } @else {
+                Non précisée
+              }
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-semibold uppercase tracking-wider text-surface-900/50">Créé le</dt>
+            <dd class="mt-1 text-sm text-surface-900">{{ p.createdAt | date: 'dd MMMM y' }}</dd>
+          </div>
+          @if (p.marketObject) {
+            <div class="sm:col-span-2">
+              <dt class="text-xs font-semibold uppercase tracking-wider text-surface-900/50">
+                Objet du marché
+              </dt>
+              <dd class="mt-1 whitespace-pre-line text-sm text-surface-900/90">
+                {{ p.marketObject }}
+              </dd>
+            </div>
+          }
+        </dl>
+      </app-card>
+
+      <app-card title="Aperçu">
+        <ul class="space-y-3 text-sm">
+          <li class="flex items-center justify-between">
+            <span class="text-surface-900/60">Sections</span>
+            <span class="font-semibold text-surface-900">{{ p._count?.sections ?? 0 }}</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span class="text-surface-900/60">Profils métiers</span>
+            <span class="font-semibold text-surface-900">{{ p._count?.jobProfiles ?? 0 }}</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span class="text-surface-900/60">Technologies</span>
+            <span class="font-semibold text-surface-900">{{ p.technologies.length }}</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span class="text-surface-900/60">Lots</span>
+            <span class="font-semibold text-surface-900">{{ p.lots.length }}</span>
+          </li>
+        </ul>
+      </app-card>
+    </section>
+
+    @if (p.technologies.length > 0) {
+      <app-card title="Technologies">
+        <ul class="flex flex-wrap gap-2">
+          @for (tech of p.technologies; track tech) {
+            <li class="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800 ring-1 ring-inset ring-brand-200">
+              {{ tech }}
+            </li>
+          }
+        </ul>
+      </app-card>
+    }
+
+    <app-sections-panel [projectId]="p.id" />
+    <app-job-profiles-panel [projectId]="p.id" />
+    <app-bpu-panel [projectId]="p.id" />
+  }
+</div>
