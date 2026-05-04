@@ -81,6 +81,29 @@ enum CvImportStatus {
   failed
 }
 
+enum CvTemplate {
+  tekteo
+  anonyme
+
+  @@map("cv_template")
+}
+
+enum CvGenerationStatus {
+  pending
+  processing
+  success
+  failed
+
+  @@map("cv_generation_status")
+}
+
+enum CvJobKind {
+  import
+  generate
+
+  @@map("cv_job_kind")
+}
+
 // ============================================================
 // User (auth gérée par notre propre JWT, pas Supabase)
 // ============================================================
@@ -103,6 +126,7 @@ model User {
   generations       GenerationHistory[]  @relation("GenerationAuthor")
   documentsUploaded ProjectDocument[]    @relation("DocumentUploader")
   cvsCreated        ConsultantCv[]       @relation("CvCreator")
+  generatedCvs      GeneratedCv[]        @relation("GeneratedCvCreator")
   aoFavorites       AoFavorite[]
   cvImportJobs      CvImportJob[]
 
@@ -343,36 +367,67 @@ model ConsultantCv {
   consultantTitle String?  @map("consultant_title")
   createdById     String?  @map("created_by")
   createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
 
-  createdBy   User?         @relation("CvCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  jobProfiles JobProfile[]
-  importJobs  CvImportJob[]
+  createdBy    User?         @relation("CvCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  jobProfiles  JobProfile[]
+  importJobs   CvImportJob[]
+  generatedCvs GeneratedCv[]
 
   @@map("consultant_cvs")
 }
 
 // ============================================================
-// CvImportJob — Suivi des imports asynchrones (PDF/DOCX → CvData)
+// GeneratedCv — PDF rendu via template + Claude + Puppeteer
+// ============================================================
+
+model GeneratedCv {
+  id           String             @id @default(uuid())
+  consultantId String             @map("consultant_id")
+  template     CvTemplate
+  status       CvGenerationStatus @default(pending)
+  outputPath   String?            @map("output_path")
+  filename     String?
+  errorMessage String?            @map("error_message")
+  createdById  String?            @map("created_by")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt      @map("updated_at")
+
+  consultant ConsultantCv  @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  createdBy  User?         @relation("GeneratedCvCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  jobs       CvImportJob[]
+
+  @@index([consultantId])
+  @@index([status])
+  @@map("generated_cvs")
+}
+
+// ============================================================
+// CvImportJob — Pipeline async (import fichier OU generate template)
 // ============================================================
 
 model CvImportJob {
   id            String         @id @default(uuid())
+  kind          CvJobKind      @default(import)
   userId        String         @map("user_id")
   status        CvImportStatus @default(pending)
-  templateId    String         @map("template_id")
-  inputPath     String         @map("input_path")
-  inputFilename String         @map("input_filename")
+  template      CvTemplate     @default(tekteo)
+  consultantId  String?        @map("consultant_id")
+  generatedCvId String?        @map("generated_cv_id")
+  inputPath     String?        @map("input_path")
+  inputFilename String?        @map("input_filename")
   outputPath    String?        @map("output_path")
-  cvId          String?        @map("cv_id")
   errorMessage  String?        @map("error_message")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt      @map("updated_at")
 
-  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cv   ConsultantCv? @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consultant  ConsultantCv? @relation(fields: [consultantId], references: [id], onDelete: SetNull)
+  generatedCv GeneratedCv?  @relation(fields: [generatedCvId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([status])
+  @@index([kind])
   @@map("cv_import_jobs")
 }
 

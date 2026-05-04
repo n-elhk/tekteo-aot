@@ -8,23 +8,30 @@ import {
   Param,
   Patch,
   Post,
+  Query,
+  Res,
   Sse,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { concat, map, Observable, of } from 'rxjs';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   adaptCvToJobSchema,
+  consultantCvsListQuerySchema,
   createConsultantCvSchema,
-  cvImportTemplateSchema,
+  cvTemplateSchema,
   formatCvFromTextSchema,
+  generateCvFromTemplateSchema,
   updateConsultantCvSchema,
   type AdaptCvToJobDto,
+  type ConsultantCvsListQueryDto,
   type CreateConsultantCvDto,
-  type CvImportTemplateValue,
+  type CvTemplateValue,
   type FormatCvFromTextDto,
+  type GenerateCvFromTemplateDto,
   type UpdateConsultantCvDto,
 } from '@org/schemas';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -36,6 +43,7 @@ import type { AuthUser } from '../../common/types/auth.types';
 import { ConsultantCvsService } from './consultant-cvs.service';
 import { CvImportEventService } from './cv-import-event.service';
 import { CvImportService } from './cv-import.service';
+import { GeneratedCvsService } from './generated-cvs.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('consultant-cvs')
@@ -44,11 +52,19 @@ export class ConsultantCvsController {
     private readonly cvs: ConsultantCvsService,
     private readonly imports: CvImportService,
     private readonly importEvents: CvImportEventService,
+    private readonly generatedCvs: GeneratedCvsService,
   ) {}
 
+  // -----------------------------------------------------------
+  // Profils consultants
+  // -----------------------------------------------------------
+
   @Get()
-  findAll() {
-    return this.cvs.findAll();
+  findAll(
+    @Query(new ZodValidationPipe(consultantCvsListQuerySchema))
+    query: ConsultantCvsListQueryDto,
+  ) {
+    return this.cvs.findAll(query);
   }
 
   @Get(':id')
@@ -83,6 +99,10 @@ export class ConsultantCvsController {
     await this.cvs.remove(id);
   }
 
+  // -----------------------------------------------------------
+  // Extraction depuis texte (legacy — conservé pour compat API)
+  // -----------------------------------------------------------
+
   @Post('format-from-text')
   @Roles(['admin', 'redacteur'])
   @HttpCode(200)
@@ -105,23 +125,27 @@ export class ConsultantCvsController {
     return this.cvs.adaptToJob(id, user.id, dto);
   }
 
-  // --------------------------------------------------------
-  // Import async depuis fichier PDF/DOCX (worker IA)
-  // --------------------------------------------------------
+  // -----------------------------------------------------------
+  // Import multi-fichier (PDF/DOCX → consultant + CV)
+  // -----------------------------------------------------------
+
   @Post('import-from-file')
   @Roles(['admin', 'redacteur'])
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 10))
   importFromFile(
     @CurrentUser() user: AuthUser,
-    @UploadedFile() file: Express.Multer.File,
-    @Body('templateId', new ZodValidationPipe(cvImportTemplateSchema))
-    templateId: CvImportTemplateValue,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body('template', new ZodValidationPipe(cvTemplateSchema))
+    template: CvTemplateValue,
   ) {
-    return this.imports.createImport(user.id, file, templateId);
+    return this.imports.createBulkImports(user.id, files, template);
   }
 
   @Get('import-jobs/:jobId')
-  getImportJob(@Param('jobId') jobId: string, @CurrentUser() user: AuthUser) {
+  getImportJob(
+    @Param('jobId') jobId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.imports.getJob(jobId, user.id);
   }
 
@@ -135,13 +159,77 @@ export class ConsultantCvsController {
 
     if (job.status === 'done' || job.status === 'failed') {
       return of(
-        toEvent({ status: job.status, error: job.error, cvId: job.cvId }),
+        toEvent({
+          kind: job.kind,
+          status: job.status,
+          template: job.template,
+          consultantId: job.consultantId,
+          generatedCvId: job.generatedCvId,
+          error: job.error,
+        }),
       );
     }
 
     return concat(
-      of(toEvent({ status: job.status })),
+      of(
+        toEvent({
+          kind: job.kind,
+          status: job.status,
+          template: job.template,
+        }),
+      ),
       this.importEvents.watch(jobId).pipe(map(toEvent)),
     );
+  }
+
+  // -----------------------------------------------------------
+  // Génération depuis page détail
+  // -----------------------------------------------------------
+
+  @Post(':id/generate')
+  @Roles(['admin', 'redacteur'])
+  generate(
+    @Param('id') consultantId: string,
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(generateCvFromTemplateSchema))
+    dto: GenerateCvFromTemplateDto,
+  ) {
+    return this.imports.createGenerationJob(
+      user.id,
+      consultantId,
+      dto.template,
+    );
+  }
+
+  // -----------------------------------------------------------
+  // CVs générés — download / delete
+  // -----------------------------------------------------------
+
+  @Get(':id/generated-cvs/:genId/download')
+  async downloadGeneratedCv(
+    @Param('id') consultantId: string,
+    @Param('genId') genId: string,
+    @Res() res: Response,
+  ) {
+    const { stream, filename } = await this.generatedCvs.getDownload(
+      genId,
+      consultantId,
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`,
+    );
+    stream.pipe(res);
+  }
+
+  @Delete(':id/generated-cvs/:genId')
+  @Roles(['admin', 'redacteur'])
+  @HttpCode(204)
+  async removeGeneratedCv(
+    @Param('id') consultantId: string,
+    @Param('genId') genId: string,
+  ) {
+    await this.generatedCvs.remove(genId, consultantId);
   }
 }

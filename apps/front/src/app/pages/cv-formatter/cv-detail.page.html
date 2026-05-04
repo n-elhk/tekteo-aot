@@ -91,5 +91,27 @@
         </p>
       </app-card>
     }
+
+    <!-- CVs générés -->
+    <app-card title="CVs générés">
+      @if (canEdit()) {
+        <button
+          cardAction
+          type="button"
+          class="text-sm font-medium text-brand-700 hover:underline"
+          (click)="openGenerateDialog()"
+        >
+          + Générer un nouveau CV
+        </button>
+      }
+
+      <app-generated-cv-list
+        [cvs]="generatedCvs()"
+        [canEdit]="canEdit()"
+        (download)="onDownloadGenerated($event)"
+        (regenerate)="onRegenerateGenerated($event)"
+        (remove)="onRemoveGenerated($event)"
+      />
+    </app-card>
   }
 </div>

@@ -1,6 +1,18 @@
-import type { CvData } from '@org/schemas';
+import type {
+  CvData,
+  CvJobEventDto,
+  CvGenerationStatusValue,
+  CvTemplateValue,
+  GeneratedCvDto,
+} from '@org/schemas';
 
-export type { CvData };
+export type {
+  CvData,
+  CvJobEventDto,
+  CvGenerationStatusValue,
+  CvTemplateValue,
+  GeneratedCvDto,
+};
 export type {
   CreateConsultantCvDto,
   UpdateConsultantCvDto,
@@ -9,6 +21,7 @@ export type {
   CvImportJobDto,
   CvImportTemplateValue,
   CvImportStatusValue,
+  GenerateCvFromTemplateDto,
 } from '@org/schemas';
 
 /** Identité simplifiée souvent rencontrée dans `cvData.identity`. */
@@ -23,7 +36,15 @@ export interface CvIdentity {
   readonly [key: string]: unknown;
 }
 
-/** CV consultant tel que renvoyé par l'API. */
+/** Métadonnées du dernier CV généré (utilisé dans la liste). */
+export interface LatestGeneratedCv {
+  readonly id: string;
+  readonly template: CvTemplateValue;
+  readonly status: CvGenerationStatusValue;
+  readonly updatedAt: string;
+}
+
+/** Profil consultant tel que renvoyé par l'API. */
 export interface ConsultantCv {
   readonly id: string;
   readonly cvData: CvData;
@@ -32,20 +53,46 @@ export interface ConsultantCv {
   readonly createdById: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
-  readonly createdBy?: { id: string; email: string; fullName: string | null } | null;
+  readonly createdBy?: {
+    id: string;
+    email: string;
+    fullName: string | null;
+  } | null;
   readonly _count?: { jobProfiles: number };
-  readonly jobProfiles?: ReadonlyArray<{ id: string; title: string; projectId: string | null }>;
+  readonly jobProfiles?: ReadonlyArray<{
+    id: string;
+    title: string;
+    projectId: string | null;
+  }>;
+  readonly latestGeneratedCv?: LatestGeneratedCv | null;
+  readonly generatedCvs?: ReadonlyArray<GeneratedCvDto>;
 }
 
-/** Réponse de `POST /consultant-cvs/format-from-text` ou `/:id/adapt-to-job`. */
+/** Page paginée de la liste consultants. */
+export interface ConsultantCvsPage {
+  readonly items: ConsultantCv[];
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
+}
+
+/** Réponse de POST /import-from-file (multi). */
+export interface CvImportBulkResponse {
+  readonly jobs: ReadonlyArray<{
+    jobId: string;
+    status: 'pending' | 'processing' | 'done' | 'failed';
+  }>;
+}
+
+/** Réponse de POST /:id/generate. */
+export interface CvGenerationResponse {
+  readonly jobId: string;
+  readonly status: 'pending' | 'processing' | 'done' | 'failed';
+}
+
+/** Réponse de `POST /consultant-cvs/format-from-text` (legacy). */
 export interface FormatCvResponse {
   readonly cv?: ConsultantCv | null;
   readonly cvData?: CvData;
   readonly usage: { tokensUsed: number; modelUsed: string };
-}
-
-/** Réponse de `POST /consultant-cvs/import-from-file`. */
-export interface CvImportCreatedResponse {
-  readonly jobId: string;
-  readonly status: 'pending' | 'processing' | 'done' | 'failed';
 }

@@ -1,96 +1,48 @@
 <div class="space-y-6">
   <!-- En-tête -->
   <header class="space-y-1">
-    <p class="text-sm font-medium text-brand-700">CV Formatter</p>
+    <p class="text-sm font-medium text-brand-700">Consultants</p>
     <h1 class="text-3xl font-semibold tracking-tight text-surface-900">
-      Structurer un CV avec l'IA
+      Gérer vos consultants
     </h1>
     <p class="text-sm text-surface-900/60">
-      Collez le contenu d'un CV (extrait d'un PDF ou Word) et l'IA le transformera
-      en CV structuré, prêt à être adapté à une fiche de poste.
+      Importez plusieurs CV ou créez un consultant manuellement,
+      puis générez des CV PDF à partir de vos templates.
     </p>
   </header>
 
-  <div class="grid gap-4 lg:grid-cols-[2fr_1fr]">
-    <!-- Zone d'extraction -->
-    <app-card title="Extraction depuis du texte">
-      <div cardAction>
-        <span
-          class="text-xs"
-          [class]="characters() > maxTextLength ? 'text-red-600 font-medium' : 'text-surface-900/50'"
+  <!-- Bloc création (tabs) -->
+  @if (canEdit()) {
+    <app-card title="Ajouter un consultant">
+      <div class="flex border-b border-surface-200 -mt-2 mb-4">
+        <button
+          type="button"
+          class="px-4 py-2 text-sm font-medium transition"
+          [class]="tab() === 'import' ? 'border-b-2 border-brand-700 text-brand-700' : 'text-surface-900/60 hover:text-surface-900'"
+          (click)="setTab('import')"
         >
-          {{ characters() }} / {{ maxTextLength }} caractères
-        </span>
+          Importer un document
+        </button>
+        <button
+          type="button"
+          class="px-4 py-2 text-sm font-medium transition"
+          [class]="tab() === 'manual' ? 'border-b-2 border-brand-700 text-brand-700' : 'text-surface-900/60 hover:text-surface-900'"
+          (click)="setTab('manual')"
+        >
+          Créer manuellement
+        </button>
       </div>
-      @if (canEdit()) {
-        <textarea
-          rows="14"
-          [value]="text()"
-          (input)="onTextChange($any($event.target).value)"
-          [attr.maxlength]="maxTextLength"
-          placeholder="Collez ici le contenu textuel du CV..."
-          class="block w-full resize-y rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 font-mono text-sm leading-relaxed text-surface-900 shadow-inner focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
-        ></textarea>
-        <p class="mt-2 text-xs text-surface-900/50">
-          Minimum {{ minTextLength }} caractères. Astuce&nbsp;: pour un PDF, ouvrez-le
-          dans votre lecteur, sélectionnez tout (⌘/Ctrl+A) et copiez (⌘/Ctrl+C).
-        </p>
 
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              [checked]="persist()"
-              (change)="onPersistChange($any($event.target).checked)"
-              class="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500/30"
-            />
-            <span class="text-surface-900/80">Enregistrer le CV après extraction</span>
-          </label>
-          <app-button
-            variant="primary"
-            [disabled]="!canSubmit()"
-            [loading]="running()"
-            (click)="formatFromText()"
-          >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l2 4 4 2-4 2-2 4-2-4-4-2 4-2 2-4z" transform="translate(7 0)" />
-            </svg>
-            Structurer avec l'IA
-          </app-button>
-        </div>
+      @if (tab() === 'import') {
+        <app-multi-file-import-zone (imported)="onImportFinished()" />
       } @else {
-        <p class="text-sm text-surface-900/60">
-          Vous n'avez pas les droits nécessaires pour extraire ou créer des CV.
-        </p>
+        <app-consultant-manual-form (created)="onManualCreated()" />
       }
     </app-card>
-
-    <!-- Conseils -->
-    <app-card title="Conseils">
-      <ul class="space-y-3 text-sm">
-        <li class="flex items-start gap-2.5">
-          <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-xs font-bold">1</span>
-          <span class="text-surface-900/80">Plus le texte est complet, meilleure est l'extraction.</span>
-        </li>
-        <li class="flex items-start gap-2.5">
-          <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-xs font-bold">2</span>
-          <span class="text-surface-900/80">Vérifiez le résultat — l'IA peut occasionnellement déformer une mission.</span>
-        </li>
-        <li class="flex items-start gap-2.5">
-          <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-xs font-bold">3</span>
-          <span class="text-surface-900/80">Utilisez ensuite l'option <em>Adapter à une fiche</em> pour personnaliser un CV pour un AO.</span>
-        </li>
-      </ul>
-    </app-card>
-  </div>
-
-  <!-- Import depuis fichier (PDF/DOCX) -->
-  @if (canEdit()) {
-    <app-cv-import-page />
   }
 
-  <!-- Liste des CVs -->
-  <app-card title="CV consultants enregistrés">
+  <!-- Liste paginée -->
+  <app-card title="Consultants enregistrés">
     @if (listLoading()) {
       <ul class="space-y-2">
         @for (placeholder of [1,2,3]; track placeholder) {
@@ -98,24 +50,28 @@
         }
       </ul>
     } @else if (listError()) {
-      <p class="text-sm text-red-700" role="alert">Impossible de charger les CV enregistrés.</p>
+      <p class="text-sm text-red-700" role="alert">
+        Impossible de charger les consultants.
+      </p>
     } @else if (cvs().length === 0) {
       <div class="rounded-xl border border-dashed border-surface-200 bg-surface-50/60 px-4 py-10 text-center">
-        <p class="text-sm font-medium text-surface-900">Aucun CV enregistré pour le moment.</p>
+        <p class="text-sm font-medium text-surface-900">
+          Aucun consultant enregistré.
+        </p>
         <p class="mt-1 text-xs text-surface-900/60">
-          Lancez votre première extraction depuis le formulaire ci-dessus.
+          Importez un CV ou créez un consultant manuellement ci-dessus.
         </p>
       </div>
     } @else {
       <ul class="space-y-2">
         @for (cv of cvs(); track cv.id) {
-          <li>
+          <li class="group flex items-center gap-4 rounded-xl border border-surface-200/70 bg-white px-4 py-3 transition hover:border-brand-300 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.18)]">
             <a
               [routerLink]="['/cv', cv.id]"
-              class="group flex items-center gap-4 rounded-xl border border-surface-200/70 bg-white px-4 py-3 transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.18)]"
+              class="flex flex-1 items-center gap-4 min-w-0"
             >
               <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-100 to-brand-200 text-sm font-semibold text-brand-800">
-                @if (cv.consultantName; as name) { {{ initials(name) }} } @else { ? }
+                {{ initials(cv.consultantName) }}
               </span>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold text-surface-900 group-hover:text-brand-800">
@@ -131,26 +87,128 @@
                   Créé le {{ cv.createdAt | date: 'dd MMM y' }}
                 </p>
               </div>
-              @if (canEdit()) {
+            </a>
+
+            <!-- Badge statut -->
+            <span
+              class="px-2 py-0.5 rounded-full text-xs font-medium"
+              [style.background-color]="statusBadge(cv.latestGeneratedCv).bg"
+              [style.color]="statusBadge(cv.latestGeneratedCv).color"
+            >
+              {{ statusBadge(cv.latestGeneratedCv).label }}
+            </span>
+
+            <!-- Icône action contextuelle -->
+            @switch (cv.latestGeneratedCv?.status ?? 'none') {
+              @case ('success') {
                 <button
                   type="button"
-                  class="shrink-0 rounded-lg p-2 text-surface-900/40 hover:bg-red-50 hover:text-red-600 transition"
-                  aria-label="Supprimer ce CV"
-                  [disabled]="removingId() === cv.id"
-                  (click)="deleteCv(cv, $event)"
+                  class="rounded-lg p-2 text-surface-900/50 hover:bg-brand-50 hover:text-brand-700 transition"
+                  aria-label="Télécharger le dernier CV"
+                  (click)="onActionClick(cv)"
                 >
                   <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M4 7h16" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
                   </svg>
                 </button>
               }
-              <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-surface-900/30 transition group-hover:translate-x-0.5 group-hover:text-brand-700" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              @case ('failed') {
+                @if (canEdit()) {
+                  <button
+                    type="button"
+                    class="rounded-lg p-2 text-surface-900/50 hover:bg-amber-50 hover:text-amber-700 transition"
+                    aria-label="Régénérer le CV"
+                    (click)="onActionClick(cv)"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0014.7-3.5M19 5a9 9 0 00-14.7 3.5" />
+                    </svg>
+                  </button>
+                }
+              }
+              @case ('processing') {
+                <span class="rounded-lg p-2 text-surface-900/30" aria-label="En cours">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 animate-spin" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                </span>
+              }
+              @case ('pending') {
+                <span class="rounded-lg p-2 text-surface-900/30" aria-label="En attente">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+              }
+              @default {
+                @if (canEdit()) {
+                  <button
+                    type="button"
+                    class="rounded-lg p-2 text-surface-900/50 hover:bg-brand-50 hover:text-brand-700 transition"
+                    aria-label="Générer un CV"
+                    (click)="onActionClick(cv)"
+                  >
+                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 4l3 3-3 3-3-3 3-3zm0 13l3 3-3 3-3-3 3-3zM4 12l3-3 3 3-3 3-3-3z" />
+                    </svg>
+                  </button>
+                }
+              }
+            }
+
+            <!-- Suppression -->
+            @if (canEdit()) {
+              <button
+                type="button"
+                class="rounded-lg p-2 text-surface-900/40 hover:bg-red-50 hover:text-red-600 transition"
+                aria-label="Supprimer ce consultant"
+                (click)="deleteCv(cv, $event)"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M4 7h16" />
+                </svg>
+              </button>
+            }
+
+            <!-- Flèche détail -->
+            <a
+              [routerLink]="['/cv', cv.id]"
+              class="text-surface-900/30 hover:text-brand-700 transition"
+              aria-label="Voir le détail"
+            >
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </a>
           </li>
         }
       </ul>
+
+      <!-- Pagination -->
+      <div class="mt-4 flex items-center justify-between text-sm text-surface-900/60">
+        <span>{{ total() }} consultants au total</span>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="rounded-lg px-3 py-1.5 border border-surface-200 disabled:opacity-40"
+            [disabled]="page() <= 1"
+            (click)="prevPage()"
+          >
+            ← Précédent
+          </button>
+          <span class="text-xs">
+            Page {{ page() }} / {{ totalPages() }}
+          </span>
+          <button
+            type="button"
+            class="rounded-lg px-3 py-1.5 border border-surface-200 disabled:opacity-40"
+            [disabled]="page() >= totalPages()"
+            (click)="nextPage()"
+          >
+            Suivant →
+          </button>
+        </div>
+      </div>
     }
   </app-card>
 </div>

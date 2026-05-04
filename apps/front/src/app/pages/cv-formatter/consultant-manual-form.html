@@ -1,0 +1,289 @@
+<form class="space-y-6" (submit)="$event.preventDefault(); submit()">
+  <!-- Identité -->
+  <section class="space-y-3">
+    <h3 class="text-sm font-semibold uppercase tracking-wide text-surface-900/60">
+      Identité <span class="text-red-600">*</span>
+    </h3>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-xs text-surface-900/70">Prénom *</span>
+        <input
+          type="text"
+          required
+          [value]="state().firstName"
+          (input)="updateField('firstName', $any($event.target).value)"
+          class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+        />
+      </label>
+      <label class="block">
+        <span class="text-xs text-surface-900/70">Nom *</span>
+        <input
+          type="text"
+          required
+          [value]="state().lastName"
+          (input)="updateField('lastName', $any($event.target).value)"
+          class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+        />
+      </label>
+      <label class="block sm:col-span-2">
+        <span class="text-xs text-surface-900/70">Intitulé du poste *</span>
+        <input
+          type="text"
+          required
+          placeholder="Ex : Tech Lead Java"
+          [value]="state().role"
+          (input)="updateField('role', $any($event.target).value)"
+          class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+        />
+      </label>
+      <label class="block">
+        <span class="text-xs text-surface-900/70">Email</span>
+        <input
+          type="email"
+          [value]="state().email"
+          (input)="updateField('email', $any($event.target).value)"
+          class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+        />
+      </label>
+      <label class="block">
+        <span class="text-xs text-surface-900/70">Téléphone</span>
+        <input
+          type="tel"
+          [value]="state().phone"
+          (input)="updateField('phone', $any($event.target).value)"
+          class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+        />
+      </label>
+      <label class="block sm:col-span-2">
+        <span class="text-xs text-surface-900/70">Localisation</span>
+        <input
+          type="text"
+          [value]="state().location"
+          (input)="updateField('location', $any($event.target).value)"
+          class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+        />
+      </label>
+      <label class="block sm:col-span-2">
+        <span class="text-xs text-surface-900/70">Résumé / pitch</span>
+        <textarea
+          rows="3"
+          [value]="state().summary"
+          (input)="updateField('summary', $any($event.target).value)"
+          class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+        ></textarea>
+      </label>
+    </div>
+  </section>
+
+  <!-- Compétences -->
+  <details class="rounded-xl border border-surface-200 bg-white">
+    <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
+      Compétences ({{ state().skills.length }})
+    </summary>
+    <div class="border-t border-surface-200 p-4 space-y-2">
+      <div class="flex flex-wrap gap-2">
+        @for (skill of state().skills; track $index; let i = $index) {
+          <span class="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs text-brand-800">
+            {{ skill }}
+            <button type="button" (click)="removeSkill(i)" aria-label="Retirer">×</button>
+          </span>
+        }
+      </div>
+      <input
+        type="text"
+        placeholder="Tapez puis Entrée pour ajouter…"
+        (keydown.enter)="$event.preventDefault(); addSkill($any($event.target).value); $any($event.target).value=''"
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+      />
+    </div>
+  </details>
+
+  <!-- Outils -->
+  <details class="rounded-xl border border-surface-200 bg-white">
+    <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
+      Outils ({{ state().tools.length }})
+    </summary>
+    <div class="border-t border-surface-200 p-4 space-y-2">
+      <div class="flex flex-wrap gap-2">
+        @for (tool of state().tools; track $index; let i = $index) {
+          <span class="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2.5 py-0.5 text-xs text-surface-900">
+            {{ tool }}
+            <button type="button" (click)="removeTool(i)" aria-label="Retirer">×</button>
+          </span>
+        }
+      </div>
+      <input
+        type="text"
+        placeholder="Tapez puis Entrée pour ajouter…"
+        (keydown.enter)="$event.preventDefault(); addTool($any($event.target).value); $any($event.target).value=''"
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+      />
+    </div>
+  </details>
+
+  <!-- Langues -->
+  <details class="rounded-xl border border-surface-200 bg-white">
+    <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
+      Langues ({{ state().languages.length }})
+    </summary>
+    <div class="border-t border-surface-200 p-4 space-y-2">
+      @for (lang of state().languages; track $index; let i = $index) {
+        <div class="grid gap-2 sm:grid-cols-[2fr_2fr_auto] items-center">
+          <input
+            type="text"
+            placeholder="Langue (ex : Anglais)"
+            [value]="lang.name"
+            (input)="updateLanguage(i, { name: $any($event.target).value })"
+            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Niveau (ex : Courant — C1)"
+            [value]="lang.levelLabel"
+            (input)="updateLanguage(i, { levelLabel: $any($event.target).value })"
+            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          />
+          <button type="button" (click)="removeLanguage(i)" class="text-red-600 text-xs">Retirer</button>
+        </div>
+      }
+      <button type="button" (click)="addLanguage()" class="text-xs font-medium text-brand-700">
+        + Ajouter une langue
+      </button>
+    </div>
+  </details>
+
+  <!-- Certifications -->
+  <details class="rounded-xl border border-surface-200 bg-white">
+    <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
+      Certifications ({{ state().certifications.length }})
+    </summary>
+    <div class="border-t border-surface-200 p-4 space-y-2">
+      @for (cert of state().certifications; track $index; let i = $index) {
+        <div class="grid gap-2 sm:grid-cols-[3fr_1fr_auto] items-center">
+          <input
+            type="text"
+            placeholder="Nom de la certification"
+            [value]="cert.name"
+            (input)="updateCertification(i, { name: $any($event.target).value })"
+            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Année"
+            [value]="cert.year"
+            (input)="updateCertification(i, { year: $any($event.target).value })"
+            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          />
+          <button type="button" (click)="removeCertification(i)" class="text-red-600 text-xs">Retirer</button>
+        </div>
+      }
+      <button type="button" (click)="addCertification()" class="text-xs font-medium text-brand-700">
+        + Ajouter une certification
+      </button>
+    </div>
+  </details>
+
+  <!-- Formation -->
+  <details class="rounded-xl border border-surface-200 bg-white">
+    <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
+      Formation ({{ state().education.length }})
+    </summary>
+    <div class="border-t border-surface-200 p-4 space-y-2">
+      @for (edu of state().education; track $index; let i = $index) {
+        <div class="grid gap-2 sm:grid-cols-[2fr_2fr_1fr_auto] items-center">
+          <input
+            type="text"
+            placeholder="Diplôme"
+            [value]="edu.degree"
+            (input)="updateEducation(i, { degree: $any($event.target).value })"
+            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="École / Université"
+            [value]="edu.school"
+            (input)="updateEducation(i, { school: $any($event.target).value })"
+            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Année"
+            [value]="edu.year"
+            (input)="updateEducation(i, { year: $any($event.target).value })"
+            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          />
+          <button type="button" (click)="removeEducation(i)" class="text-red-600 text-xs">Retirer</button>
+        </div>
+      }
+      <button type="button" (click)="addEducation()" class="text-xs font-medium text-brand-700">
+        + Ajouter une formation
+      </button>
+    </div>
+  </details>
+
+  <!-- Expériences -->
+  <details class="rounded-xl border border-surface-200 bg-white">
+    <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
+      Expériences ({{ state().experiences.length }})
+    </summary>
+    <div class="border-t border-surface-200 p-4 space-y-3">
+      @for (exp of state().experiences; track $index; let i = $index) {
+        <div class="rounded-xl bg-surface-50/60 p-3 space-y-2">
+          <div class="grid gap-2 sm:grid-cols-2">
+            <input
+              type="text"
+              placeholder="Titre / Rôle"
+              [value]="exp.role"
+              (input)="updateExperience(i, { role: $any($event.target).value })"
+              class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Entreprise / Client"
+              [value]="exp.company"
+              (input)="updateExperience(i, { company: $any($event.target).value })"
+              class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Date début (ex : Jan 2022)"
+              [value]="exp.dateStart"
+              (input)="updateExperience(i, { dateStart: $any($event.target).value })"
+              class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Date fin (ex : Présent)"
+              [value]="exp.dateEnd"
+              (input)="updateExperience(i, { dateEnd: $any($event.target).value })"
+              class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+          </div>
+          <textarea
+            rows="2"
+            placeholder="Mission / Description"
+            [value]="exp.mission"
+            (input)="updateExperience(i, { mission: $any($event.target).value })"
+            class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+          ></textarea>
+          <button type="button" (click)="removeExperience(i)" class="text-red-600 text-xs">Retirer</button>
+        </div>
+      }
+      <button type="button" (click)="addExperience()" class="text-xs font-medium text-brand-700">
+        + Ajouter une expérience
+      </button>
+    </div>
+  </details>
+
+  <!-- Submit -->
+  <div class="flex justify-end gap-2">
+    <app-button
+      variant="primary"
+      type="submit"
+      [disabled]="!canSubmit()"
+      [loading]="submitting()"
+    >
+      Enregistrer le consultant
+    </app-button>
+  </div>
+</form>

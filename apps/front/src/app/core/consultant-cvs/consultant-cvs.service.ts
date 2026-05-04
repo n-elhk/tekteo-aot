@@ -1,13 +1,15 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   AdaptCvToJobDto,
   ConsultantCv,
+  ConsultantCvsPage,
   CreateConsultantCvDto,
-  CvImportCreatedResponse,
-  CvImportJobDto,
-  CvImportTemplateValue,
+  CvGenerationResponse,
+  CvImportBulkResponse,
+  CvJobEventDto,
+  CvTemplateValue,
   FormatCvFromTextDto,
   FormatCvResponse,
   UpdateConsultantCvDto,
@@ -15,13 +17,19 @@ import {
 
 const API = '/api/consultant-cvs';
 
-/** Client HTTP pour les CV consultants. */
+/** Client HTTP pour les profils consultants et leurs CV générés. */
 @Injectable({ providedIn: 'root' })
 export class ConsultantCvsService {
   private readonly http = inject(HttpClient);
 
-  list(): Observable<ConsultantCv[]> {
-    return this.http.get<ConsultantCv[]>(API);
+  list(params: {
+    page: number;
+    pageSize: number;
+  }): Observable<ConsultantCvsPage> {
+    const httpParams = new HttpParams()
+      .set('page', params.page)
+      .set('pageSize', params.pageSize);
+    return this.http.get<ConsultantCvsPage>(API, { params: httpParams });
   }
 
   get(id: string): Observable<ConsultantCv> {
@@ -48,35 +56,33 @@ export class ConsultantCvsService {
     return this.http.post<FormatCvResponse>(`${API}/${id}/adapt-to-job`, dto);
   }
 
-  // ----------------------------------------------------------
-  // Import async depuis fichier PDF/DOCX
-  // ----------------------------------------------------------
+  // -----------------------------------------------------------
+  // Import multi-fichier
+  // -----------------------------------------------------------
 
-  importFromFile(
-    file: File,
-    templateId: CvImportTemplateValue,
-  ): Observable<CvImportCreatedResponse> {
+  importMultipleFiles(
+    files: File[],
+    template: CvTemplateValue,
+  ): Observable<CvImportBulkResponse> {
     const form = new FormData();
-    form.append('file', file);
-    form.append('templateId', templateId);
-    return this.http.post<CvImportCreatedResponse>(
+    for (const file of files) {
+      form.append('files', file);
+    }
+    form.append('template', template);
+    return this.http.post<CvImportBulkResponse>(
       `${API}/import-from-file`,
       form,
     );
   }
 
-  getImportJob(jobId: string): Observable<CvImportJobDto> {
-    return this.http.get<CvImportJobDto>(`${API}/import-jobs/${jobId}`);
-  }
-
-  watchImportJob(jobId: string): Observable<Partial<CvImportJobDto>> {
+  watchImportJob(jobId: string): Observable<Partial<CvJobEventDto>> {
     return new Observable((observer) => {
-      const source = new EventSource(`${API}/import-jobs/${jobId}/events`, {
-        withCredentials: true,
-      });
-      
+      const source = new EventSource(
+        `${API}/import-jobs/${jobId}/events`,
+        { withCredentials: true },
+      );
       source.onmessage = (event) => {
-        const data = JSON.parse(event.data) as Partial<CvImportJobDto>;
+        const data = JSON.parse(event.data) as Partial<CvJobEventDto>;
         observer.next(data);
         if (data.status === 'done' || data.status === 'failed') {
           source.close();
@@ -89,5 +95,37 @@ export class ConsultantCvsService {
       };
       return () => source.close();
     });
+  }
+
+  // -----------------------------------------------------------
+  // Génération depuis détail
+  // -----------------------------------------------------------
+
+  generate(
+    consultantId: string,
+    template: CvTemplateValue,
+  ): Observable<CvGenerationResponse> {
+    return this.http.post<CvGenerationResponse>(
+      `${API}/${consultantId}/generate`,
+      { template },
+    );
+  }
+
+  // -----------------------------------------------------------
+  // CVs générés — download / delete
+  // -----------------------------------------------------------
+
+  /** URL absolue pour ouvrir le PDF dans un nouvel onglet ou déclencher download. */
+  buildDownloadUrl(consultantId: string, genId: string): string {
+    return `${API}/${consultantId}/generated-cvs/${genId}/download`;
+  }
+
+  removeGeneratedCv(
+    consultantId: string,
+    genId: string,
+  ): Observable<void> {
+    return this.http.delete<void>(
+      `${API}/${consultantId}/generated-cvs/${genId}`,
+    );
   }
 }

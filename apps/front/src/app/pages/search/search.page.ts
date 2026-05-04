@@ -65,8 +65,14 @@ export class SearchPage {
 
   protected readonly resource = rxResource({
     stream: () =>
-      combineLatest([this.projectsService.list(), this.cvsService.list()]).pipe(
-        map(([projects, cvs]): SearchData => ({ projects, cvs })),
+      combineLatest([
+        this.projectsService.list(),
+        this.cvsService.list({ page: 1, pageSize: 100 }),
+      ]).pipe(
+        map(([projects, page]): SearchData => ({
+          projects,
+          cvs: page.items,
+        })),
       ),
   });
 

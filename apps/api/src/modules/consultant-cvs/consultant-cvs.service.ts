@@ -18,6 +18,7 @@ import {
   buildFormatPrompt,
   type JobProfilePayload,
 } from './cv-prompts';
+import { GeneratedCvsService } from './generated-cvs.service';
 
 @Injectable()
 export class ConsultantCvsService {
@@ -25,19 +26,48 @@ export class ConsultantCvsService {
     private readonly prisma: PrismaService,
     private readonly anthropic: AnthropicService,
     private readonly history: GenerationHistoryService,
+    private readonly generatedCvs: GeneratedCvsService,
   ) {}
 
   // --------------------------------------------------------
   // CRUD
   // --------------------------------------------------------
-  findAll() {
-    return this.prisma.consultantCv.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        createdBy: { select: { id: true, email: true, fullName: true } },
-        _count: { select: { jobProfiles: true } },
-      },
-    });
+  async findAll(params: { page: number; pageSize: number }) {
+    const { page, pageSize } = params;
+    const skip = (page - 1) * pageSize;
+    const [items, total] = await Promise.all([
+      this.prisma.consultantCv.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+        include: {
+          createdBy: { select: { id: true, email: true, fullName: true } },
+          _count: { select: { jobProfiles: true } },
+          generatedCvs: {
+            orderBy: { updatedAt: 'desc' },
+            take: 1,
+            select: {
+              id: true,
+              template: true,
+              status: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+      this.prisma.consultantCv.count(),
+    ]);
+
+    return {
+      items: items.map((c) => ({
+        ...c,
+        latestGeneratedCv: c.generatedCvs[0] ?? null,
+        generatedCvs: undefined,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async findOne(id: string) {
@@ -48,9 +78,21 @@ export class ConsultantCvsService {
         jobProfiles: {
           select: { id: true, title: true, projectId: true },
         },
+        generatedCvs: {
+          orderBy: { updatedAt: 'desc' },
+          select: {
+            id: true,
+            template: true,
+            status: true,
+            filename: true,
+            errorMessage: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
-    if (!cv) throw new NotFoundException(`CV ${id} introuvable`);
+    if (!cv) throw new NotFoundException(`Consultant ${id} introuvable`);
     return cv;
   }
 
@@ -85,6 +127,8 @@ export class ConsultantCvsService {
 
   async remove(id: string) {
     await this.findOne(id);
+    // Purge des fichiers PDF avant cascade Prisma (sinon orphelins dans le storage)
+    await this.generatedCvs.purgeForConsultant(id);
     return this.prisma.consultantCv.delete({ where: { id } });
   }
 

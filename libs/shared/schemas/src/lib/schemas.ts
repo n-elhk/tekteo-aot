@@ -333,8 +333,14 @@ export type CvData = z.infer<typeof cvDataSchema>;
 
 export const createConsultantCvSchema = z.object({
   cvData: cvDataSchema,
-  consultantName: z.string().max(200).optional(),
-  consultantTitle: z.string().max(200).optional(),
+  consultantName: z
+    .string()
+    .min(1, { message: 'Le nom est requis' })
+    .max(200),
+  consultantTitle: z
+    .string()
+    .min(1, { message: 'L\'intitulé est requis' })
+    .max(200),
 });
 export type CreateConsultantCvDto = z.infer<typeof createConsultantCvSchema>;
 
@@ -399,6 +405,75 @@ export const cvImportJobSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 export type CvImportJobDto = z.infer<typeof cvImportJobSchema>;
+
+// ============================================================
+// CV templates & génération PDF (nouvelle archi consultant profiles)
+// ============================================================
+
+export const cvTemplateSchema = z.enum(['tekteo', 'anonyme']);
+export type CvTemplateValue = z.infer<typeof cvTemplateSchema>;
+
+export const cvJobKindSchema = z.enum(['import', 'generate']);
+export type CvJobKindValue = z.infer<typeof cvJobKindSchema>;
+
+export const cvGenerationStatusSchema = z.enum([
+  'pending',
+  'processing',
+  'success',
+  'failed',
+]);
+export type CvGenerationStatusValue = z.infer<typeof cvGenerationStatusSchema>;
+
+export const generatedCvSchema = z.object({
+  id: z.uuid(),
+  template: cvTemplateSchema,
+  status: cvGenerationStatusSchema,
+  filename: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+export type GeneratedCvDto = z.infer<typeof generatedCvSchema>;
+
+/** Body POST /consultant-cvs/:id/generate */
+export const generateCvFromTemplateSchema = z.object({
+  template: cvTemplateSchema,
+});
+export type GenerateCvFromTemplateDto = z.infer<
+  typeof generateCvFromTemplateSchema
+>;
+
+/** Payload SSE — discriminated union par `kind`. */
+export const cvJobEventSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('import'),
+    jobId: z.uuid(),
+    status: cvImportStatusSchema,
+    template: cvTemplateSchema,
+    consultantId: z.uuid().nullable(),
+    generatedCvId: z.uuid().nullable(),
+    error: z.string().nullable(),
+  }),
+  z.object({
+    kind: z.literal('generate'),
+    jobId: z.uuid(),
+    status: cvImportStatusSchema,
+    template: cvTemplateSchema,
+    consultantId: z.uuid(),
+    generatedCvId: z.uuid().nullable(),
+    error: z.string().nullable(),
+  }),
+]);
+export type CvJobEventDto = z.infer<typeof cvJobEventSchema>;
+
+/** Pagination — query params de GET /consultant-cvs */
+export const consultantCvsListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(20),
+});
+export type ConsultantCvsListQueryDto = z.infer<
+  typeof consultantCvsListQuerySchema
+>;
 
 // ============================================================
 // AO (BOAMP) schemas
