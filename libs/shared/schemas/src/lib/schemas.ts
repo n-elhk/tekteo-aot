@@ -491,3 +491,41 @@ export const generationHistoryQuerySchema = z.object({
 export type GenerationHistoryQueryDto = z.infer<
   typeof generationHistoryQuerySchema
 >;
+
+// ============================================================
+// Dashboard schemas
+// ============================================================
+
+export const dashboardOverviewSchema = z.object({
+  projectStats: z.object({
+    total: z.number().int().nonnegative(),
+    byStatus: z.object({
+      brouillon: z.number().int().nonnegative(),
+      en_cours: z.number().int().nonnegative(),
+      finalise: z.number().int().nonnegative(),
+      soumis: z.number().int().nonnegative(),
+    }),
+  }),
+  tokenStats: z.object({
+    totalTokens: z.number().int().nonnegative(),
+    totalCost: z.number().nonnegative(),
+    byModule: z.array(
+      z.object({
+        module: generationModuleSchema,
+        count: z.number().int().nonnegative(),
+        tokens: z.number().int().nonnegative(),
+      }),
+    ),
+  }),
+  recentProjects: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      clientName: z.string(),
+      deadline: z.iso.date().nullable(),
+      status: projectStatusSchema,
+      updatedAt: z.iso.datetime(),
+    }),
+  ),
+});
+export type DashboardOverviewDto = z.infer<typeof dashboardOverviewSchema>;

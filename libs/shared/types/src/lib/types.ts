@@ -58,3 +58,42 @@ export interface Section {
   updatedAt: string;
   template?: { id: string; name: string } | null;
 }
+
+// ============================================================
+// Dashboard types
+// ============================================================
+
+export interface DashboardOverview {
+  projectStats: {
+    total: number;
+    byStatus: {
+      brouillon: number;
+      en_cours: number;
+      finalise: number;
+      soumis: number;
+    };
+  };
+  tokenStats: {
+    totalTokens: number;
+    totalCost: number;
+    byModule: Array<{
+      module:
+        | 'section'
+        | 'fiche_poste'
+        | 'bpu'
+        | 'infographie'
+        | 'cv'
+        | 'ao_analyse';
+      count: number;
+      tokens: number;
+    }>;
+  };
+  recentProjects: Array<{
+    id: string;
+    name: string;
+    clientName: string;
+    deadline: string | null;
+    status: 'brouillon' | 'en_cours' | 'finalise' | 'soumis';
+    updatedAt: string;
+  }>;
+}

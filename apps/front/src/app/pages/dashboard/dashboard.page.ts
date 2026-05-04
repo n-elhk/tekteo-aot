@@ -1,72 +1,51 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
+import type { DashboardOverview, ProjectStatus } from '@org/types';
 import { AuthStore } from '../../core/auth/auth.store';
-import { Card } from '../../shared/ui/card/card';
-import { Button } from '../../shared/ui/button/button';
+import { DashboardService } from '../../core/dashboard/dashboard.service';
 import { AppDialogService } from '../../core/dialog/app-dialog.service';
+import { Button } from '../../shared/ui/button/button';
+import { Card } from '../../shared/ui/card/card';
+import { statusLabel as resolveStatusLabel } from './status-label';
 import { WelcomeModal } from './welcome-modal';
 
-interface StatTile {
+interface StatusTile {
+  readonly key: 'total' | ProjectStatus;
   readonly label: string;
-  readonly value: string;
-  readonly delta: string;
-  readonly trend: 'up' | 'down' | 'flat';
+  readonly value: number;
+  readonly color: string;
   readonly icon: string;
 }
 
-interface ActivityEntry {
-  readonly who: string;
-  readonly what: string;
-  readonly target: string;
-  readonly when: string;
-}
-
-interface QuickAction {
+interface ModuleLine {
   readonly label: string;
-  readonly description: string;
+  readonly tokens: number;
 }
 
-const STAT_TILES: ReadonlyArray<StatTile> = [
-  {
-    label: "Appels d'offres suivis",
-    value: '128',
-    delta: '+12 cette semaine',
-    trend: 'up',
-    icon: 'M3 7h18M3 12h18M3 17h12',
-  },
-  {
-    label: 'Analyses en cours',
-    value: '34',
-    delta: "+4 aujourd'hui",
-    trend: 'up',
-    icon: 'M12 4a8 8 0 100 16 8 8 0 000-16zm0 4v4l3 2',
-  },
-  {
-    label: 'Taux de réponse',
-    value: '87%',
-    delta: '−1,4 pts',
-    trend: 'down',
-    icon: 'M3 17l6-6 4 4 7-7',
-  },
-  {
-    label: 'Échéances à venir',
-    value: '9',
-    delta: 'cette semaine',
-    trend: 'flat',
-    icon: 'M3 8h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z',
-  },
-];
+const PRIMARY = '#1B2A4A';
+const SECONDARY = '#2E86AB';
+const ICONS = {
+  folder: 'M3 7h18M3 12h18M3 17h12',
+  clock: 'M12 4a8 8 0 100 16 8 8 0 000-16zm0 4v4l3 2',
+  check: 'M5 13l4 4L19 7',
+  trend: 'M3 17l6-6 4 4 7-7',
+};
 
-const ACTIVITY: ReadonlyArray<ActivityEntry> = [
-  { who: 'Camille', what: "a publié l'analyse", target: 'AO-2026-014', when: 'il y a 12 min' },
-  { who: 'Yanis', what: 'a créé le projet', target: 'Modernisation portail', when: 'il y a 1 h' },
-  { who: 'Sophie', what: 'a archivé', target: 'AO-2025-987', when: 'hier' },
-];
-
-const QUICK_ACTIONS: ReadonlyArray<QuickAction> = [
-  { label: 'Lancer une analyse AO', description: 'Importer un cahier des charges' },
-  { label: 'Configurer la veille', description: 'Créer une alerte personnalisée' },
-  { label: 'Inviter un coéquipier', description: 'Partager votre espace de travail' },
-];
+const MODULE_LABELS: Record<string, string> = {
+  section: 'Sections mémoire',
+  fiche_poste: 'Fiches de poste',
+  cv: 'Formateur CV',
+  ao_analyse: 'Analyses AO',
+  bpu: 'BPU',
+  infographie: 'Infographies',
+};
 
 /**
  * Tableau de bord : aperçu rapide de l'activité Tekteo et accès aux modules.
@@ -74,23 +53,88 @@ const QUICK_ACTIONS: ReadonlyArray<QuickAction> = [
 @Component({
   selector: 'app-dashboard-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Card, Button],
+  imports: [Card, Button, RouterLink, CurrencyPipe, DatePipe, DecimalPipe],
   templateUrl: './dashboard.page.html',
 })
 export class DashboardPage {
   private readonly authStore = inject(AuthStore);
   private readonly dialog = inject(AppDialogService);
+  private readonly dashboardService = inject(DashboardService);
 
   protected readonly user = this.authStore.user;
-  protected readonly tiles = STAT_TILES;
-  protected readonly activity = ACTIVITY;
-  protected readonly quickActions = QUICK_ACTIONS;
   protected readonly greeting = computed(() =>
     buildGreeting(this.user()?.name ?? null),
   );
 
+  protected readonly overview = rxResource<DashboardOverview, void>({
+    stream: () => this.dashboardService.getOverview(),
+  });
+
+  protected readonly isLoading = computed(() => this.overview.isLoading());
+  protected readonly hasError = computed(
+    () => this.overview.error() !== undefined,
+  );
+
+  protected readonly statusTiles = computed<StatusTile[]>(() => {
+    const stats = this.overview.value()?.projectStats;
+    if (!stats) return [];
+    return [
+      {
+        key: 'total',
+        label: 'Projets AO total',
+        value: stats.total,
+        color: PRIMARY,
+        icon: ICONS.folder,
+      },
+      {
+        key: 'en_cours',
+        label: 'En cours',
+        value: stats.byStatus.en_cours,
+        color: '#D97706',
+        icon: ICONS.clock,
+      },
+      {
+        key: 'finalise',
+        label: 'Finalisés',
+        value: stats.byStatus.finalise,
+        color: '#059669',
+        icon: ICONS.check,
+      },
+      {
+        key: 'soumis',
+        label: 'Soumis',
+        value: stats.byStatus.soumis,
+        color: SECONDARY,
+        icon: ICONS.trend,
+      },
+    ];
+  });
+
+  protected readonly tokenStats = computed(
+    () => this.overview.value()?.tokenStats,
+  );
+  protected readonly recentProjects = computed(
+    () => this.overview.value()?.recentProjects ?? [],
+  );
+
+  protected readonly moduleLines = computed<ModuleLine[]>(() => {
+    const byModule = this.tokenStats()?.byModule ?? [];
+    return byModule.map((m) => ({
+      label: MODULE_LABELS[m.module] ?? m.module,
+      tokens: m.tokens,
+    }));
+  });
+
+  protected reload(): void {
+    this.overview.reload();
+  }
+
   protected openDemoDialog(): void {
     this.dialog.open<WelcomeModal, undefined, 'ok' | 'later'>(WelcomeModal);
+  }
+
+  protected statusLabel(status: ProjectStatus) {
+    return resolveStatusLabel(status);
   }
 }
 

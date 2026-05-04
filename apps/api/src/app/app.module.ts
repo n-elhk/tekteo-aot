@@ -9,6 +9,7 @@ import { AoModule } from '../modules/ao/ao.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { BpuModule } from '../modules/bpu/bpu.module';
 import { ConsultantCvsModule } from '../modules/consultant-cvs/consultant-cvs.module';
+import { DashboardModule } from '../modules/dashboard/dashboard.module';
 import { GenerationHistoryModule } from '../modules/generation-history/generation-history.module';
 import { JobProfilesModule } from '../modules/job-profiles/job-profiles.module';
 import { PricingGridsModule } from '../modules/pricing-grids/pricing-grids.module';
@@ -43,6 +44,7 @@ import { UsersModule } from '../modules/users/users.module';
     ConsultantCvsModule,
     AoModule,
     AoFavoritesModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

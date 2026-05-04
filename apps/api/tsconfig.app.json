@@ -10,13 +10,11 @@
     "target": "es2021"
   },
   "include": ["src/**/*.ts"],
-  "exclude": [
-    "out-tsc",
-    "dist",
-    "src/**/*.spec.ts",
-    "src/**/*.test.ts"
-  ],
+  "exclude": ["out-tsc", "dist", "src/**/*.spec.ts", "src/**/*.test.ts"],
   "references": [
+    {
+      "path": "../../libs/shared/types/tsconfig.lib.json"
+    },
     {
       "path": "../../libs/shared/schemas/tsconfig.lib.json"
     }
