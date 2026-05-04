@@ -220,7 +220,7 @@ export class BoampClient {
     buyer: row.nomacheteur ?? null,
     publishedAt: row.dateparution ?? null,
     deadline: row.datelimitereponse ?? null,
-    department: row.code_departement ?? null,
+    department: row.code_departement != null ? String(row.code_departement) : null,
     typeMarche: Array.isArray(row.type_marche_facette)
       ? row.type_marche_facette[0]
       : null,
@@ -246,7 +246,7 @@ interface BoampRecord {
   dateparution?: string;
   datelimitereponse?: string;
   descripteur_libelle?: string | string[];
-  code_departement?: string;
+  code_departement?: string | number;
   type_marche_facette?: string | string[];
   procedure_libelle?: string;
   url_avis?: string;

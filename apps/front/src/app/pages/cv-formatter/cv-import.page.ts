@@ -1,6 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { catchError, of, switchMap, tap } from 'rxjs';
 import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
 import type {
   CvImportJobDto,
@@ -14,6 +20,7 @@ const ACCEPTED_MIME_TYPES = new Set([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
+
 const ACCEPTED_EXTENSIONS = new Set(['.pdf', '.docx']);
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -29,7 +36,6 @@ export class CvImportPage {
   private readonly cvsService = inject(ConsultantCvsService);
   private readonly toaster = inject(ToastService);
   private readonly router = inject(Router);
-  private sseSubscription: Subscription | null = null;
 
   protected readonly file = signal<File | null>(null);
   protected readonly template = signal<Template>('modern');
@@ -50,7 +56,10 @@ export class CvImportPage {
       return;
     }
     const ext = '.' + picked.name.split('.').pop()?.toLowerCase();
-    if (!ACCEPTED_MIME_TYPES.has(picked.type) && !ACCEPTED_EXTENSIONS.has(ext)) {
+    if (
+      !ACCEPTED_MIME_TYPES.has(picked.type) &&
+      !ACCEPTED_EXTENSIONS.has(ext)
+    ) {
       this.toaster.error({
         title: 'Format non supporté',
         description: 'Seuls les fichiers PDF et DOCX sont acceptés.',
@@ -80,16 +89,18 @@ export class CvImportPage {
     if (!f || this.running()) return;
     this.running.set(true);
     this.job.set(null);
-    this.cvsService.importFromFile(f, this.template()).subscribe({
-      next: ({ jobId }) => this.watchJob(jobId),
-      error: (error: unknown) => {
-        this.running.set(false);
-        this.toaster.error({
-          title: 'Import impossible',
-          description: extractErrorMessage(error),
-        });
-      },
-    });
+    this.cvsService
+      .importFromFile(f, this.template())
+      .pipe(switchMap(({ jobId }) => this.watchJob(jobId)))
+      .subscribe({
+        error: (error: unknown) => {
+          this.running.set(false);
+          this.toaster.error({
+            title: 'Import impossible',
+            description: extractErrorMessage(error),
+          });
+        },
+      });
   }
 
   protected openCv(): void {
@@ -98,10 +109,9 @@ export class CvImportPage {
     this.router.navigate(['/cv', current.cvId]);
   }
 
-  private watchJob(jobId: string): void {
-    this.sseSubscription?.unsubscribe();
-    this.sseSubscription = this.cvsService.watchImportJob(jobId).subscribe({
-      next: (update) => {
+  private watchJob(jobId: string) {
+    return this.cvsService.watchImportJob(jobId).pipe(
+      tap((update) => {
         this.job.update((prev) => ({ ...prev, jobId, ...update }));
         if (update.status === 'done') {
           this.running.set(false);
@@ -116,21 +126,25 @@ export class CvImportPage {
             description: update.error ?? 'Le worker a renvoyé une erreur.',
           });
         }
-      },
-      error: () => {
+      }),
+      catchError(() => {
         this.running.set(false);
         this.toaster.error({
           title: 'Suivi du job impossible',
           description: 'La connexion temps réel a été perdue.',
         });
-      },
-    });
+        return of(null);
+      }),
+    );
   }
 }
 
 function extractErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error !== null) {
-    const maybeError = error as { error?: { message?: unknown }; message?: unknown };
+    const maybeError = error as {
+      error?: { message?: unknown };
+      message?: unknown;
+    };
     const inner = maybeError.error?.message;
     if (typeof inner === 'string') return inner;
     if (typeof maybeError.message === 'string') return maybeError.message;

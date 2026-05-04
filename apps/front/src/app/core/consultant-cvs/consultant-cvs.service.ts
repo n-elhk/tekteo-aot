@@ -74,6 +74,7 @@ export class ConsultantCvsService {
       const source = new EventSource(`${API}/import-jobs/${jobId}/events`, {
         withCredentials: true,
       });
+      
       source.onmessage = (event) => {
         const data = JSON.parse(event.data) as Partial<CvImportJobDto>;
         observer.next(data);
