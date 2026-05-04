@@ -18,9 +18,12 @@ export interface AuthUserWithRefresh extends AuthUser {
   refreshToken: string;
 }
 
-// Augment Express Request type so req.user is strongly typed everywhere
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: AuthUser | AuthUserWithRefresh;
-  }
+// declare module 'fastify' {
+//   interface FastifyRequest {
+//     user?: AuthUser | AuthUserWithRefresh;
+//   }
+// }
+
+export interface FastifyRequestWithUser {
+  user?: AuthUser | AuthUserWithRefresh;
 }

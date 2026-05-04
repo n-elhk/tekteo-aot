@@ -10,6 +10,7 @@ import type {
 } from '@org/schemas';
 import { AbstractStorageService } from '../../common/storage/storage.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import type { UploadedMultipartFile } from '../../common/interceptors/fastify-file.interceptor';
 
 const ALLOWED_MIME_PREFIXES = [
   'application/pdf',
@@ -62,7 +63,7 @@ export class ProjectDocumentsService {
   async upload(
     projectId: string,
     userId: string,
-    file: Express.Multer.File,
+    file: UploadedMultipartFile,
     metadata: { fileType: DocumentFileTypeValue; category: DocumentCategory },
   ) {
     if (!file) {

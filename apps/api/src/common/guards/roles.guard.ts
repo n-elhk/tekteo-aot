@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import { Roles } from '../decorators/roles.decorator';
 import type { AuthUser } from '../types/auth.types';
 
@@ -23,7 +23,7 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = ctx.switchToHttp().getRequest<Request>();
+    const request = ctx.switchToHttp().getRequest<FastifyRequest>();
     const user = request.user as AuthUser | undefined;
 
     if (!user) {

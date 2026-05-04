@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import type { JwtPayload } from '../types/auth.types';
 
 @Injectable()
@@ -17,7 +17,7 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const request = ctx.switchToHttp().getRequest<Request>();
+    const request = ctx.switchToHttp().getRequest<FastifyRequest>();
     const token = request.cookies?.['access_token'];
 
     if (!token) {

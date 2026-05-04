@@ -1,35 +1,32 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { NestExpressApplication } from '@nestjs/platform-express';
-import cookieParser from 'cookie-parser';
-import { json, urlencoded } from 'express';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bodyParser: false,
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 15 * 1024 * 1024 }),
+  );
+
+  await app.register(fastifyCookie);
+  await app.register(fastifyMultipart, {
+    limits: { fileSize: 50 * 1024 * 1024 },
   });
-  const globalPrefix = 'api';
 
-  app.setGlobalPrefix(globalPrefix);
-
-  // Body parsers — limite augmentée pour supporter les attachments base64
-  // (les uploads multipart sont gérés indépendamment par multer / FileInterceptor)
-  app.use(json({ limit: '15mb' }));
-  app.use(urlencoded({ extended: true, limit: '15mb' }));
-  app.use(cookieParser());
+  app.setGlobalPrefix('api');
 
   const corsOrigin = process.env.CORS_ORIGIN ?? 'https://localhost:4200';
   app.enableCors({
-    origin: corsOrigin.split(',').map((value) => value.trim()),
+    origin: corsOrigin.split(',').map((v) => v.trim()),
     credentials: true,
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  Logger.log(
-    `🚀 API is running on: http://localhost:${port}/${globalPrefix}`,
-  );
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`🚀 API is running on: http://localhost:${port}/api`);
 }
 
 bootstrap();

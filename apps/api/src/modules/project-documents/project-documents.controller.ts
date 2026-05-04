@@ -9,11 +9,9 @@ import {
   Post,
   Query,
   Res,
-  UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import {
   documentCategorySchema,
   documentFileTypeSchema,
@@ -22,7 +20,11 @@ import {
   type DocumentFileTypeValue,
   type UpdateDocumentDto,
 } from '@org/schemas';
-import type { Response } from 'express';
+import type { FastifyReply } from 'fastify';
+import {
+  FastifyFileInterceptor,
+  UploadedMultipartFile,
+} from '../../common/interceptors/fastify-file.interceptor';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -54,11 +56,11 @@ export class ProjectDocumentsController {
 
   @Post('projects/:projectId/documents')
   @Roles(['admin', 'redacteur'])
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FastifyFileInterceptor('file'))
   upload(
     @Param('projectId') projectId: string,
     @CurrentUser() user: AuthUser,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedMultipartFile() file: UploadedMultipartFile,
     @Body('fileType', new ZodValidationPipe(documentFileTypeSchema))
     fileType: DocumentFileTypeValue,
     @Body('category', new ZodValidationPipe(documentCategorySchema))
@@ -87,15 +89,13 @@ export class ProjectDocumentsController {
   }
 
   @Get('documents/:id/download')
-  async download(@Param('id') id: string, @Res() res: Response) {
+  async download(@Param('id') id: string, @Res() res: FastifyReply) {
     const { doc, stream } = await this.documents.getDownloadInfo(id);
-    res.set({
+    res.headers({
       'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(
-        doc.fileName,
-      )}"`,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(doc.fileName)}"`,
       ...(doc.fileSize ? { 'Content-Length': doc.fileSize.toString() } : {}),
     });
-    stream.pipe(res);
+    await res.send(stream);
   }
 }
