@@ -7,15 +7,23 @@ import type {
   FormatCvFromTextDto,
   UpdateConsultantCvDto,
 } from '@org/schemas';
-import { CvWorkerService } from '../../common/cv-worker/cv-worker.service';
+import { AnthropicService } from '../../common/anthropic/anthropic.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { parseLlmJson } from '../../common/utils/llm-json.util';
 import { GenerationHistoryService } from '../generation-history/generation-history.service';
+import {
+  ADAPT_SYSTEM_PROMPT,
+  FORMAT_SYSTEM_PROMPT,
+  buildAdaptPrompt,
+  buildFormatPrompt,
+  type JobProfilePayload,
+} from './cv-prompts';
 
 @Injectable()
 export class ConsultantCvsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly worker: CvWorkerService,
+    private readonly anthropic: AnthropicService,
     private readonly history: GenerationHistoryService,
   ) {}
 
@@ -81,44 +89,52 @@ export class ConsultantCvsService {
   }
 
   // --------------------------------------------------------
-  // Génération IA — extraction depuis texte brut (worker LLM local)
+  // Génération IA — extraction depuis texte brut (Anthropic)
   // --------------------------------------------------------
   async formatFromText(userId: string, dto: FormatCvFromTextDto) {
-    const result = await this.worker.processFromText(dto.cvText);
+    const generation = await this.anthropic.generate({
+      systemPrompt: FORMAT_SYSTEM_PROMPT,
+      userMessage: buildFormatPrompt(dto.cvText),
+      maxTokens: 8192,
+    });
+
+    const cvData = parseLlmJson<CvData>(generation.content);
+    const tokensUsed =
+      generation.usage.inputTokens + generation.usage.outputTokens;
 
     await this.history.record({
       module: 'cv',
       userId,
-      modelUsed: result.modelUsed,
-      tokensUsed: result.tokensUsed,
-      outputContent: JSON.stringify(result.cvData).slice(0, 4000),
+      modelUsed: generation.modelUsed,
+      tokensUsed,
+      outputContent: JSON.stringify(cvData).slice(0, 4000),
       inputData: { mode: 'format', textLength: dto.cvText.length },
     });
 
     if (dto.persist) {
       const persisted = await this.prisma.consultantCv.create({
         data: {
-          cvData: result.cvData as unknown as Prisma.InputJsonValue,
-          consultantName: extractIdentityName(result.cvData),
-          consultantTitle: extractIdentityRole(result.cvData),
+          cvData: cvData as unknown as Prisma.InputJsonValue,
+          consultantName: extractIdentityName(cvData),
+          consultantTitle: extractIdentityRole(cvData),
           createdById: userId,
         },
       });
       return {
         cv: persisted,
-        usage: { tokensUsed: result.tokensUsed, modelUsed: result.modelUsed },
+        usage: { tokensUsed, modelUsed: generation.modelUsed },
       };
     }
 
     return {
       cv: null,
-      cvData: result.cvData,
-      usage: { tokensUsed: result.tokensUsed, modelUsed: result.modelUsed },
+      cvData,
+      usage: { tokensUsed, modelUsed: generation.modelUsed },
     };
   }
 
   // --------------------------------------------------------
-  // Adaptation à une fiche de poste (worker LLM local)
+  // Adaptation à une fiche de poste (Anthropic)
   // --------------------------------------------------------
   async adaptToJob(cvId: string, userId: string, dto: AdaptCvToJobDto) {
     const sourceCv = await this.findOne(cvId);
@@ -131,22 +147,31 @@ export class ConsultantCvsService {
       );
     }
 
-    const result = await this.worker.adaptToJob(sourceCv.cvData, {
+    const payload: JobProfilePayload = {
       title: jobProfile.title,
       experienceLevel: jobProfile.experienceLevel,
       requiredSkills: jobProfile.requiredSkills,
       optionalSkills: jobProfile.optionalSkills,
       missions: jobProfile.missions,
       education: jobProfile.education,
+    };
+
+    const generation = await this.anthropic.generate({
+      systemPrompt: ADAPT_SYSTEM_PROMPT,
+      userMessage: buildAdaptPrompt(sourceCv.cvData, payload),
+      maxTokens: 16_000,
     });
+
+    const cvData = parseLlmJson<CvData>(generation.content);
+    const tokensUsed =
+      generation.usage.inputTokens + generation.usage.outputTokens;
 
     const adaptedCv = await this.prisma.consultantCv.create({
       data: {
-        cvData: result.cvData as unknown as Prisma.InputJsonValue,
+        cvData: cvData as unknown as Prisma.InputJsonValue,
         consultantName:
-          extractIdentityName(result.cvData) ?? sourceCv.consultantName,
-        consultantTitle:
-          extractIdentityRole(result.cvData) ?? jobProfile.title,
+          extractIdentityName(cvData) ?? sourceCv.consultantName,
+        consultantTitle: extractIdentityRole(cvData) ?? jobProfile.title,
         createdById: userId,
       },
     });
@@ -162,8 +187,8 @@ export class ConsultantCvsService {
       module: 'cv',
       projectId: jobProfile.projectId ?? undefined,
       userId,
-      modelUsed: result.modelUsed,
-      tokensUsed: result.tokensUsed,
+      modelUsed: generation.modelUsed,
+      tokensUsed,
       outputContent: `Adapté depuis CV ${cvId} vers fiche ${jobProfile.title}`,
       inputData: {
         mode: 'adapt',
@@ -175,7 +200,7 @@ export class ConsultantCvsService {
 
     return {
       cv: adaptedCv,
-      usage: { tokensUsed: result.tokensUsed, modelUsed: result.modelUsed },
+      usage: { tokensUsed, modelUsed: generation.modelUsed },
     };
   }
 }

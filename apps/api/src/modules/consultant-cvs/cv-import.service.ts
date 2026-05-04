@@ -96,24 +96,9 @@ export class CvImportService {
       templateId: job.templateId,
       inputFilename: job.inputFilename,
       cvId: job.cvId,
-      downloadUrl:
-        job.status === 'done'
-          ? `/consultant-cvs/import-jobs/${job.id}/download`
-          : null,
       error: job.errorMessage,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     };
-  }
-
-  async getJobOutputPath(jobId: string, userId: string): Promise<string> {
-    const job = await this.prisma.cvImportJob.findUnique({ where: { id: jobId } });
-    if (!job || job.userId !== userId) {
-      throw new NotFoundException(`Import ${jobId} introuvable`);
-    }
-    if (job.status !== 'done' || !job.outputPath) {
-      throw new NotFoundException("L'import n'est pas terminé ou a échoué");
-    }
-    return job.outputPath;
   }
 }

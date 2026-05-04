@@ -1,14 +1,22 @@
+import { readFile } from 'node:fs/promises';
+import { extname } from 'node:path';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import mammoth from 'mammoth';
 import { Prisma } from '../../generated/prisma/client';
-import { CvWorkerService } from '../../common/cv-worker/cv-worker.service';
+import { AnthropicService } from '../../common/anthropic/anthropic.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CV_IMPORT_QUEUE } from '../../common/queue/queue.module';
+import { parseLlmJson } from '../../common/utils/llm-json.util';
 import { GenerationHistoryService } from '../generation-history/generation-history.service';
 import type { CvData } from '@org/schemas';
 import type { CvImportJobPayload } from './cv-import.service';
 import { CvImportEventService } from './cv-import-event.service';
+import {
+  FORMAT_SYSTEM_PROMPT,
+  buildFormatPrompt,
+} from './cv-prompts';
 
 @Processor(CV_IMPORT_QUEUE)
 export class CvImportProcessor extends WorkerHost {
@@ -16,7 +24,7 @@ export class CvImportProcessor extends WorkerHost {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cvWorker: CvWorkerService,
+    private readonly anthropic: AnthropicService,
     private readonly history: GenerationHistoryService,
     private readonly events: CvImportEventService,
   ) {
@@ -42,41 +50,32 @@ export class CvImportProcessor extends WorkerHost {
     this.events.emit(jobId, { status: 'processing' });
 
     try {
-      const result = await this.cvWorker.processFromFile({
-        jobId,
-        inputPath,
-        templateId,
-      });
+      const generation = await this.extract(inputPath);
+      const cvData = parseLlmJson<CvData>(generation.content);
+      const tokensUsed =
+        generation.usage.inputTokens + generation.usage.outputTokens;
 
       const cv = await this.prisma.consultantCv.create({
         data: {
-          cvData: result.cvData as unknown as Prisma.InputJsonValue,
-          consultantName: extractIdentityName(result.cvData),
-          consultantTitle: extractIdentityRole(result.cvData),
+          cvData: cvData as unknown as Prisma.InputJsonValue,
+          consultantName: extractIdentityName(cvData),
+          consultantTitle: extractIdentityRole(cvData),
           createdById: importJob.userId,
         },
       });
 
       await this.prisma.cvImportJob.update({
         where: { id: jobId },
-        data: {
-          status: 'done',
-          outputPath: result.outputPath,
-          cvId: cv.id,
-        },
+        data: { status: 'done', cvId: cv.id },
       });
 
-      this.events.emit(jobId, {
-        status: 'done',
-        cvId: cv.id,
-        downloadUrl: `/consultant-cvs/import-jobs/${jobId}/download`,
-      });
+      this.events.emit(jobId, { status: 'done', cvId: cv.id });
 
       await this.history.record({
         module: 'cv',
         userId: importJob.userId,
-        modelUsed: result.modelUsed,
-        tokensUsed: result.tokensUsed,
+        modelUsed: generation.modelUsed,
+        tokensUsed,
         outputContent: `Import depuis ${importJob.inputFilename} → CV ${cv.id}`,
         inputData: {
           mode: 'import-from-file',
@@ -94,6 +93,43 @@ export class CvImportProcessor extends WorkerHost {
       this.events.emit(jobId, { status: 'failed', error: message.slice(0, 2000) });
       throw err;
     }
+  }
+
+  private async extract(inputPath: string) {
+    const ext = extname(inputPath).toLowerCase();
+    const buffer = await readFile(inputPath);
+
+    if (ext === '.pdf') {
+      return this.anthropic.generate({
+        systemPrompt: FORMAT_SYSTEM_PROMPT,
+        userMessage: buildFormatPrompt(
+          'Le contenu du CV est joint en pièce jointe (PDF). Analyse-le et extrais les données.',
+        ),
+        maxTokens: 8192,
+        attachments: [
+          {
+            name: 'cv.pdf',
+            mediaType: 'application/pdf',
+            data: buffer.toString('base64'),
+          },
+        ],
+      });
+    }
+
+    if (ext === '.docx') {
+      const { value } = await mammoth.extractRawText({ buffer });
+      const text = value.trim();
+      if (!text) {
+        throw new Error('Le fichier DOCX est vide ou illisible');
+      }
+      return this.anthropic.generate({
+        systemPrompt: FORMAT_SYSTEM_PROMPT,
+        userMessage: buildFormatPrompt(text),
+        maxTokens: 8192,
+      });
+    }
+
+    throw new Error(`Format de fichier non supporté : ${ext}`);
   }
 }
 

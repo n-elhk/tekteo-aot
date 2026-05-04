@@ -1,6 +1,3 @@
-import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
-import { basename } from 'node:path';
 import {
   Body,
   Controller,
@@ -11,7 +8,6 @@ import {
   Param,
   Patch,
   Post,
-  Res,
   Sse,
   UploadedFile,
   UseGuards,
@@ -31,7 +27,6 @@ import {
   type FormatCvFromTextDto,
   type UpdateConsultantCvDto,
 } from '@org/schemas';
-import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -139,28 +134,14 @@ export class ConsultantCvsController {
     const toEvent = (data: object): MessageEvent => ({ data });
 
     if (job.status === 'done' || job.status === 'failed') {
-      return of(toEvent({ status: job.status, error: job.error, cvId: job.cvId, downloadUrl: job.downloadUrl }));
+      return of(
+        toEvent({ status: job.status, error: job.error, cvId: job.cvId }),
+      );
     }
 
     return concat(
       of(toEvent({ status: job.status })),
       this.importEvents.watch(jobId).pipe(map(toEvent)),
     );
-  }
-
-  @Get('import-jobs/:jobId/download')
-  async downloadImport(
-    @Param('jobId') jobId: string,
-    @CurrentUser() user: AuthUser,
-    @Res() res: Response,
-  ) {
-    const outputPath = await this.imports.getJobOutputPath(jobId, user.id);
-    const stats = await stat(outputPath);
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${basename(outputPath)}"`,
-      'Content-Length': String(stats.size),
-    });
-    createReadStream(outputPath).pipe(res);
   }
 }

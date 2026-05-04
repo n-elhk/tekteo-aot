@@ -89,10 +89,4 @@ export class ConsultantCvsService {
       return () => source.close();
     });
   }
-
-  downloadImport(jobId: string): Observable<Blob> {
-    return this.http.get(`${API}/import-jobs/${jobId}/download`, {
-      responseType: 'blob',
-    });
-  }
 }

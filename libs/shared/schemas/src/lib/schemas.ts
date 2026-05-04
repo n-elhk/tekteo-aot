@@ -394,7 +394,6 @@ export const cvImportJobSchema = z.object({
   templateId: cvImportTemplateSchema,
   inputFilename: z.string(),
   cvId: z.uuid().nullable().optional(),
-  downloadUrl: z.string().nullable().optional(),
   error: z.string().nullable().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),

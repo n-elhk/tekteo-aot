@@ -3,10 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "docker compose up -d postgres redis ollama cv-worker && nx run-many -t serve -p front,@org/api --parallel",
-    "dev:no-worker": "docker compose up -d postgres redis && nx run-many -t serve -p front,@org/api --parallel",
-    "dev:worker": "docker compose up postgres redis ollama cv-worker",
-    "dev:down": "docker compose down",
+    "dev": "docker compose up -d postgres redis && npx nx run-many -t serve -p front,@org/api --parallel",
     "build": "npx nx run-many -t build -p front,@org/api",
     "test": "npx nx run-many -t test",
     "lint": "npx nx run-many -t eslint:lint lint",
@@ -14,8 +11,7 @@
     "prisma:generate": "prisma generate --schema=apps/api/prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=apps/api/prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema=apps/api/prisma/schema.prisma",
-    "prisma:seed": "ts-node --transpile-only apps/api/prisma/seed.ts",
-    "ollama:pull": "docker exec tekteo-ollama ollama pull gemma3:4b"
+    "prisma:seed": "ts-node --transpile-only apps/api/prisma/seed.ts"
   },
   "private": true,
   "devDependencies": {

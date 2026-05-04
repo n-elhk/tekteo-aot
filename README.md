@@ -12,10 +12,11 @@ Monorepo Nx — Angular 21 (front) + NestJS (api) + PostgreSQL/Prisma + JWT cook
 | Frontend | Angular 21 (zoneless, signals, signal-forms, rxResource) |
 | Styling | TailwindCSS v4 (CSS uniquement) |
 | Backend | NestJS 11 |
-| Base de données | PostgreSQL 17 (via Docker) |
+| Base de données | PostgreSQL 17 |
 | ORM | Prisma 6 |
 | Validation | Zod v4 (pipe NestJS + schémas partagés) |
 | Auth | JWT (access + refresh) en cookies HTTP-only — sans Passport |
+| IA | Anthropic Claude (extraction & génération via `@anthropic-ai/sdk`) |
 | SSL local | OpenSSL (auto-signé) |
 
 ## Structure
@@ -33,8 +34,9 @@ libs/
 ## Prérequis
 
 - Node 20+
-- Docker / Docker Compose
+- PostgreSQL 17 et Redis 7 accessibles localement
 - npm (le projet n'utilise pas pnpm)
+- Une clé API Anthropic (`ANTHROPIC_API_KEY`) pour activer les fonctionnalités IA
 
 ## Démarrage
 
@@ -44,20 +46,15 @@ npm install --legacy-peer-deps
 
 # 2. Copier les variables d'env
 cp .env.example .env
-# Éditer .env si besoin
+# Éditer .env (DATABASE_URL, REDIS_URL, ANTHROPIC_API_KEY…)
 
-# 3. Démarrer les services Docker (postgres + redis) une première fois
-npm run dev:no-worker
-# (Ctrl+C une fois les services up, puis `npm run dev:down` pour les arrêter
-#  si tu veux d'abord faire les étapes Prisma ci-dessous)
-
-# 4. Lancer la migration Prisma initiale
+# 3. Migration Prisma initiale
 npm run prisma:migrate -- --name init
 
-# 5. Seed des données initiales (templates, prompts, TJM)
+# 4. Seed des données initiales (templates, prompts, TJM)
 npm run prisma:seed
 
-# 6. Lancer toute la stack (services Docker + front + api + cv-worker)
+# 5. Lancer front + api en parallèle
 npm run dev
 ```
 
@@ -68,10 +65,7 @@ npm run dev
 
 | Script | Description |
 | --- | --- |
-| `npm run dev` | Lance toute la stack : postgres + redis + ollama + cv-worker (Docker, détachés) + front + api (locaux, parallèle) |
-| `npm run dev:no-worker` | Lance postgres + redis (Docker, détachés) + front + api — sans worker ni ollama (gain de RAM) |
-| `npm run dev:worker` | Lance postgres + redis + ollama + cv-worker uniquement (Docker, foreground avec logs visibles) |
-| `npm run dev:down` | Stoppe tous les conteneurs Docker |
+| `npm run dev` | Lance front + api en parallèle (Nx serve) |
 | `npm run build` | Build front + api |
 | `npm run test` | Lance tous les tests |
 | `npm run lint` | Lint tous les projets |
@@ -79,11 +73,6 @@ npm run dev
 | `npm run prisma:migrate` | Crée et applique une migration |
 | `npm run prisma:studio` | Ouvre Prisma Studio |
 | `npm run prisma:seed` | Seed les données initiales (templates, prompts, TJM) |
-| `npm run ollama:pull` | Télécharge le modèle Mistral dans Ollama |
-
-> **Note** : le worker `cv-worker` (Python/FastAPI) tourne uniquement via Docker.
-> Aucune installation Python locale n'est nécessaire. Pour rebuild son image après
-> une modification de `pyproject.toml` : `docker compose build cv-worker`.
 
 ## Auth — endpoints
 

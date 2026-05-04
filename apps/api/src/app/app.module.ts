@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AnthropicModule } from '../common/anthropic/anthropic.module';
-import { CvWorkerModule } from '../common/cv-worker/cv-worker.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { QueueModule } from '../common/queue/queue.module';
 import { StorageModule } from '../common/storage/storage.module';
@@ -28,7 +27,6 @@ import { UsersModule } from '../modules/users/users.module';
     }),
     PrismaModule,
     AnthropicModule,
-    CvWorkerModule,
     QueueModule,
     StorageModule,
     GenerationHistoryModule,

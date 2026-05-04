@@ -1,7 +1,7 @@
 <app-card title="Import depuis PDF/DOCX">
   <p class="text-sm text-surface-900/60">
-    Téléversez un CV existant (PDF ou DOCX, ≤ 10 Mo) — il sera extrait, structuré
-    et rendu dans un template Word téléchargeable.
+    Téléversez un CV existant (PDF ou DOCX, ≤ 10 Mo) — il sera extrait et
+    structuré automatiquement, puis enregistré comme CV consultant.
   </p>
 
   <div class="mt-4 space-y-3">
@@ -49,9 +49,9 @@
         @if (s === 'failed' && job()?.error) {
           <p class="mt-1 text-red-600">{{ job()?.error }}</p>
         }
-        @if (s === 'done') {
-          <app-button class="mt-2" variant="secondary" (click)="download()">
-            Télécharger le CV
+        @if (s === 'done' && job()?.cvId) {
+          <app-button class="mt-2" variant="secondary" (click)="openCv()">
+            Ouvrir le CV
           </app-button>
         }
       </div>

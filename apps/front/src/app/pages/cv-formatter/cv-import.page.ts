@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
 import type {
@@ -27,6 +28,7 @@ type Template = CvImportTemplateValue;
 export class CvImportPage {
   private readonly cvsService = inject(ConsultantCvsService);
   private readonly toaster = inject(ToastService);
+  private readonly router = inject(Router);
   private sseSubscription: Subscription | null = null;
 
   protected readonly file = signal<File | null>(null);
@@ -90,17 +92,10 @@ export class CvImportPage {
     });
   }
 
-  protected download(): void {
+  protected openCv(): void {
     const current = this.job();
-    if (!current?.jobId || current.status !== 'done') return;
-    this.cvsService.downloadImport(current.jobId).subscribe({
-      next: (blob) => triggerDownload(blob, `${current.jobId}.pdf`),
-      error: () =>
-        this.toaster.error({
-          title: 'Téléchargement impossible',
-          description: 'Le fichier généré est introuvable.',
-        }),
-    });
+    if (!current?.cvId) return;
+    this.router.navigate(['/cv', current.cvId]);
   }
 
   private watchJob(jobId: string): void {
@@ -111,8 +106,8 @@ export class CvImportPage {
         if (update.status === 'done') {
           this.running.set(false);
           this.toaster.success({
-            title: 'CV généré',
-            description: 'Vous pouvez télécharger le résultat.',
+            title: 'CV importé',
+            description: 'Le CV a été extrait et enregistré.',
           });
         } else if (update.status === 'failed') {
           this.running.set(false);
@@ -131,17 +126,6 @@ export class CvImportPage {
       },
     });
   }
-}
-
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 function extractErrorMessage(error: unknown): string {
