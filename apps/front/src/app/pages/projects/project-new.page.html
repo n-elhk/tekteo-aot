@@ -18,6 +18,22 @@
     </p>
   </header>
 
+  @if (cctpFilename(); as filename) {
+    <div
+      class="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 text-sm text-blue-900"
+      role="status"
+    >
+      <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M14 2v6h6M9 13h6M9 17h6" />
+      </svg>
+      <p>
+        <span class="font-medium">CCTP rattaché :</span>
+        <span class="ml-1">{{ filename }}</span>
+      </p>
+    </div>
+  }
+
   <form
     [formRoot]="projectForm"
     (submit)="onSubmit()"
@@ -104,6 +120,11 @@
             class="block w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
             placeholder="12"
           />
+          @if (projectForm.durationMonths().touched() && projectForm.durationMonths().errors().length > 0) {
+            <span class="text-xs font-medium text-red-600">
+              {{ projectForm.durationMonths().errors()[0].message }}
+            </span>
+          }
         </label>
       </div>
     </app-card>

@@ -1,4 +1,9 @@
-<form class="space-y-6" (submit)="$event.preventDefault(); submit()">
+<form
+  [formRoot]="consultantForm"
+  (submit)="onSubmit()"
+  novalidate
+  class="space-y-6"
+>
   <!-- Identité -->
   <section class="space-y-3">
     <h3 class="text-sm font-semibold uppercase tracking-wide text-surface-900/60">
@@ -9,48 +14,60 @@
         <span class="text-xs text-surface-900/70">Prénom *</span>
         <input
           type="text"
-          required
-          [value]="state().firstName"
-          (input)="updateField('firstName', $any($event.target).value)"
+          [formField]="consultantForm.firstName"
           class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
         />
+        @if (consultantForm.firstName().touched() && consultantForm.firstName().errors().length > 0) {
+          <span class="mt-1 block text-xs font-medium text-red-600">
+            {{ consultantForm.firstName().errors()[0].message }}
+          </span>
+        }
       </label>
       <label class="block">
         <span class="text-xs text-surface-900/70">Nom *</span>
         <input
           type="text"
-          required
-          [value]="state().lastName"
-          (input)="updateField('lastName', $any($event.target).value)"
+          [formField]="consultantForm.lastName"
           class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
         />
+        @if (consultantForm.lastName().touched() && consultantForm.lastName().errors().length > 0) {
+          <span class="mt-1 block text-xs font-medium text-red-600">
+            {{ consultantForm.lastName().errors()[0].message }}
+          </span>
+        }
       </label>
       <label class="block sm:col-span-2">
         <span class="text-xs text-surface-900/70">Intitulé du poste *</span>
         <input
           type="text"
-          required
           placeholder="Ex : Tech Lead Java"
-          [value]="state().role"
-          (input)="updateField('role', $any($event.target).value)"
+          [formField]="consultantForm.role"
           class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
         />
+        @if (consultantForm.role().touched() && consultantForm.role().errors().length > 0) {
+          <span class="mt-1 block text-xs font-medium text-red-600">
+            {{ consultantForm.role().errors()[0].message }}
+          </span>
+        }
       </label>
       <label class="block">
         <span class="text-xs text-surface-900/70">Email</span>
         <input
           type="email"
-          [value]="state().email"
-          (input)="updateField('email', $any($event.target).value)"
+          [formField]="consultantForm.email"
           class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
         />
+        @if (consultantForm.email().touched() && consultantForm.email().errors().length > 0) {
+          <span class="mt-1 block text-xs font-medium text-red-600">
+            {{ consultantForm.email().errors()[0].message }}
+          </span>
+        }
       </label>
       <label class="block">
         <span class="text-xs text-surface-900/70">Téléphone</span>
         <input
           type="tel"
-          [value]="state().phone"
-          (input)="updateField('phone', $any($event.target).value)"
+          [formField]="consultantForm.phone"
           class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
         />
       </label>
@@ -58,8 +75,7 @@
         <span class="text-xs text-surface-900/70">Localisation</span>
         <input
           type="text"
-          [value]="state().location"
-          (input)="updateField('location', $any($event.target).value)"
+          [formField]="consultantForm.location"
           class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
         />
       </label>
@@ -67,10 +83,14 @@
         <span class="text-xs text-surface-900/70">Résumé / pitch</span>
         <textarea
           rows="3"
-          [value]="state().summary"
-          (input)="updateField('summary', $any($event.target).value)"
+          [formField]="consultantForm.summary"
           class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
         ></textarea>
+        @if (consultantForm.summary().touched() && consultantForm.summary().errors().length > 0) {
+          <span class="mt-1 block text-xs font-medium text-red-600">
+            {{ consultantForm.summary().errors()[0].message }}
+          </span>
+        }
       </label>
     </div>
   </section>
@@ -78,11 +98,11 @@
   <!-- Compétences -->
   <details class="rounded-xl border border-surface-200 bg-white">
     <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
-      Compétences ({{ state().skills.length }})
+      Compétences ({{ model().skills.length }})
     </summary>
     <div class="border-t border-surface-200 p-4 space-y-2">
       <div class="flex flex-wrap gap-2">
-        @for (skill of state().skills; track $index; let i = $index) {
+        @for (skill of model().skills; track $index; let i = $index) {
           <span class="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-xs text-brand-800">
             {{ skill }}
             <button type="button" (click)="removeSkill(i)" aria-label="Retirer">×</button>
@@ -101,11 +121,11 @@
   <!-- Outils -->
   <details class="rounded-xl border border-surface-200 bg-white">
     <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
-      Outils ({{ state().tools.length }})
+      Outils ({{ model().tools.length }})
     </summary>
     <div class="border-t border-surface-200 p-4 space-y-2">
       <div class="flex flex-wrap gap-2">
-        @for (tool of state().tools; track $index; let i = $index) {
+        @for (tool of model().tools; track $index; let i = $index) {
           <span class="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2.5 py-0.5 text-xs text-surface-900">
             {{ tool }}
             <button type="button" (click)="removeTool(i)" aria-label="Retirer">×</button>
@@ -124,23 +144,28 @@
   <!-- Langues -->
   <details class="rounded-xl border border-surface-200 bg-white">
     <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
-      Langues ({{ state().languages.length }})
+      Langues ({{ model().languages.length }})
     </summary>
     <div class="border-t border-surface-200 p-4 space-y-2">
-      @for (lang of state().languages; track $index; let i = $index) {
-        <div class="grid gap-2 sm:grid-cols-[2fr_2fr_auto] items-center">
-          <input
-            type="text"
-            placeholder="Langue (ex : Anglais)"
-            [value]="lang.name"
-            (input)="updateLanguage(i, { name: $any($event.target).value })"
-            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
-          />
+      @for (langField of consultantForm.languages; track $index; let i = $index) {
+        <div class="grid gap-2 sm:grid-cols-[2fr_2fr_auto] items-start">
+          <label class="block">
+            <input
+              type="text"
+              placeholder="Langue (ex : Anglais)"
+              [formField]="langField.name"
+              class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+            @if (langField.name().touched() && langField.name().errors().length > 0) {
+              <span class="mt-1 block text-xs font-medium text-red-600">
+                {{ langField.name().errors()[0].message }}
+              </span>
+            }
+          </label>
           <input
             type="text"
             placeholder="Niveau (ex : Courant — C1)"
-            [value]="lang.levelLabel"
-            (input)="updateLanguage(i, { levelLabel: $any($event.target).value })"
+            [formField]="langField.levelLabel"
             class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
           />
           <button type="button" (click)="removeLanguage(i)" class="text-red-600 text-xs">Retirer</button>
@@ -155,23 +180,28 @@
   <!-- Certifications -->
   <details class="rounded-xl border border-surface-200 bg-white">
     <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
-      Certifications ({{ state().certifications.length }})
+      Certifications ({{ model().certifications.length }})
     </summary>
     <div class="border-t border-surface-200 p-4 space-y-2">
-      @for (cert of state().certifications; track $index; let i = $index) {
-        <div class="grid gap-2 sm:grid-cols-[3fr_1fr_auto] items-center">
-          <input
-            type="text"
-            placeholder="Nom de la certification"
-            [value]="cert.name"
-            (input)="updateCertification(i, { name: $any($event.target).value })"
-            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
-          />
+      @for (certField of consultantForm.certifications; track $index; let i = $index) {
+        <div class="grid gap-2 sm:grid-cols-[3fr_1fr_auto] items-start">
+          <label class="block">
+            <input
+              type="text"
+              placeholder="Nom de la certification"
+              [formField]="certField.name"
+              class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+            @if (certField.name().touched() && certField.name().errors().length > 0) {
+              <span class="mt-1 block text-xs font-medium text-red-600">
+                {{ certField.name().errors()[0].message }}
+              </span>
+            }
+          </label>
           <input
             type="text"
             placeholder="Année"
-            [value]="cert.year"
-            (input)="updateCertification(i, { year: $any($event.target).value })"
+            [formField]="certField.year"
             class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
           />
           <button type="button" (click)="removeCertification(i)" class="text-red-600 text-xs">Retirer</button>
@@ -186,30 +216,41 @@
   <!-- Formation -->
   <details class="rounded-xl border border-surface-200 bg-white">
     <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
-      Formation ({{ state().education.length }})
+      Formation ({{ model().education.length }})
     </summary>
     <div class="border-t border-surface-200 p-4 space-y-2">
-      @for (edu of state().education; track $index; let i = $index) {
-        <div class="grid gap-2 sm:grid-cols-[2fr_2fr_1fr_auto] items-center">
-          <input
-            type="text"
-            placeholder="Diplôme"
-            [value]="edu.degree"
-            (input)="updateEducation(i, { degree: $any($event.target).value })"
-            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            placeholder="École / Université"
-            [value]="edu.school"
-            (input)="updateEducation(i, { school: $any($event.target).value })"
-            class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
-          />
+      @for (eduField of consultantForm.education; track $index; let i = $index) {
+        <div class="grid gap-2 sm:grid-cols-[2fr_2fr_1fr_auto] items-start">
+          <label class="block">
+            <input
+              type="text"
+              placeholder="Diplôme"
+              [formField]="eduField.degree"
+              class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+            @if (eduField.degree().touched() && eduField.degree().errors().length > 0) {
+              <span class="mt-1 block text-xs font-medium text-red-600">
+                {{ eduField.degree().errors()[0].message }}
+              </span>
+            }
+          </label>
+          <label class="block">
+            <input
+              type="text"
+              placeholder="École / Université"
+              [formField]="eduField.school"
+              class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+            />
+            @if (eduField.school().touched() && eduField.school().errors().length > 0) {
+              <span class="mt-1 block text-xs font-medium text-red-600">
+                {{ eduField.school().errors()[0].message }}
+              </span>
+            }
+          </label>
           <input
             type="text"
             placeholder="Année"
-            [value]="edu.year"
-            (input)="updateEducation(i, { year: $any($event.target).value })"
+            [formField]="eduField.year"
             class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
           />
           <button type="button" (click)="removeEducation(i)" class="text-red-600 text-xs">Retirer</button>
@@ -224,46 +265,55 @@
   <!-- Expériences -->
   <details class="rounded-xl border border-surface-200 bg-white">
     <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-surface-900">
-      Expériences ({{ state().experiences.length }})
+      Expériences ({{ model().experiences.length }})
     </summary>
     <div class="border-t border-surface-200 p-4 space-y-3">
-      @for (exp of state().experiences; track $index; let i = $index) {
+      @for (expField of consultantForm.experiences; track $index; let i = $index) {
         <div class="rounded-xl bg-surface-50/60 p-3 space-y-2">
           <div class="grid gap-2 sm:grid-cols-2">
-            <input
-              type="text"
-              placeholder="Titre / Rôle"
-              [value]="exp.role"
-              (input)="updateExperience(i, { role: $any($event.target).value })"
-              class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
-            />
-            <input
-              type="text"
-              placeholder="Entreprise / Client"
-              [value]="exp.company"
-              (input)="updateExperience(i, { company: $any($event.target).value })"
-              class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
-            />
+            <label class="block">
+              <input
+                type="text"
+                placeholder="Titre / Rôle"
+                [formField]="expField.role"
+                class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+              />
+              @if (expField.role().touched() && expField.role().errors().length > 0) {
+                <span class="mt-1 block text-xs font-medium text-red-600">
+                  {{ expField.role().errors()[0].message }}
+                </span>
+              }
+            </label>
+            <label class="block">
+              <input
+                type="text"
+                placeholder="Entreprise / Client"
+                [formField]="expField.company"
+                class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
+              />
+              @if (expField.company().touched() && expField.company().errors().length > 0) {
+                <span class="mt-1 block text-xs font-medium text-red-600">
+                  {{ expField.company().errors()[0].message }}
+                </span>
+              }
+            </label>
             <input
               type="text"
               placeholder="Date début (ex : Jan 2022)"
-              [value]="exp.dateStart"
-              (input)="updateExperience(i, { dateStart: $any($event.target).value })"
+              [formField]="expField.dateStart"
               class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
             />
             <input
               type="text"
               placeholder="Date fin (ex : Présent)"
-              [value]="exp.dateEnd"
-              (input)="updateExperience(i, { dateEnd: $any($event.target).value })"
+              [formField]="expField.dateEnd"
               class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
             />
           </div>
           <textarea
             rows="2"
             placeholder="Mission / Description"
-            [value]="exp.mission"
-            (input)="updateExperience(i, { mission: $any($event.target).value })"
+            [formField]="expField.mission"
             class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm"
           ></textarea>
           <button type="button" (click)="removeExperience(i)" class="text-red-600 text-xs">Retirer</button>
@@ -280,8 +330,8 @@
     <app-button
       variant="primary"
       type="submit"
-      [disabled]="!canSubmit()"
-      [loading]="submitting()"
+      [disabled]="!consultantForm().valid() || consultantForm().submitting()"
+      [loading]="consultantForm().submitting()"
     >
       Enregistrer le consultant
     </app-button>

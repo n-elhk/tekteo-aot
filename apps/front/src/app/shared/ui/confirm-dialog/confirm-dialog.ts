@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, InjectionToken, inject } from '@angular/core';
-import { DialogRef } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { ModalShell } from '../modal-shell/modal-shell';
 import { Button } from '../button/button';
 
@@ -14,9 +14,9 @@ export interface ConfirmDialogData {
 /**
  * Boîte de dialogue de confirmation générique.
  *
- * À ouvrir via {@link AppDialogService.open} en fournissant {@link ConfirmDialog.DATA}
- * dans les `providers` de configuration. La promesse retournée résout `true`
- * si l'utilisateur confirme, `false` (ou `undefined`) sinon.
+ * À ouvrir via `Dialog.open(ConfirmDialog, { data: { ... } })`. La promesse
+ * issue de `closed` résout `true` si l'utilisateur confirme, `false` (ou
+ * `undefined`) sinon.
  */
 @Component({
   selector: 'app-confirm-dialog',
@@ -36,9 +36,7 @@ export interface ConfirmDialogData {
   `,
 })
 export class ConfirmDialog {
-  static readonly DATA = new InjectionToken<ConfirmDialogData>('ConfirmDialogData');
-
-  protected readonly data = inject(ConfirmDialog.DATA);
+  protected readonly data = inject<ConfirmDialogData>(DIALOG_DATA);
   private readonly dialogRef = inject(DialogRef<boolean, ConfirmDialog>);
 
   protected confirm(): void {

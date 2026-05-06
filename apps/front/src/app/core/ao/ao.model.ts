@@ -1,14 +1,11 @@
 import type { AoItem } from '@org/schemas';
+import type { PaginatedResponse } from '@org/types';
 
 export type { AoItem };
 export type { AoSearchQueryDto, AnalyseAoDto } from '@org/schemas';
 
 /** Pagination + résultats renvoyés par `GET /ao/search`. */
-export interface AoSearchResponse {
-  readonly results: ReadonlyArray<AoItem>;
-  readonly page: number;
-  readonly totalCount: number;
-}
+export type AoSearchResponse = PaginatedResponse<AoItem>;
 
 /** Niveau d'alerte d'un signal de pré-analyse. */
 export type AoSignalLevel = 'red' | 'yellow' | 'green';
@@ -28,6 +25,17 @@ export interface AoBoampHistoryEntry {
   readonly acheteur: string | null;
 }
 
+/** Résultat web (Brave Search) attaché à l'analyse d'un AO. */
+export type AoWebSnippetType = 'titulaire' | 'attribution';
+
+export interface AoWebSnippet {
+  readonly type: AoWebSnippetType;
+  readonly label: string;
+  readonly title: string;
+  readonly url: string;
+  readonly description: string;
+}
+
 export interface AoAnalysisResult {
   readonly score: number | null;
   readonly pertinence: string;
@@ -37,6 +45,7 @@ export interface AoAnalysisResult {
   readonly recommendation: AoRecommendation;
   readonly recommendationText: string;
   readonly boampHistory: ReadonlyArray<AoBoampHistoryEntry>;
+  readonly webSnippets?: ReadonlyArray<AoWebSnippet>;
   readonly tokensUsed: number;
 }
 

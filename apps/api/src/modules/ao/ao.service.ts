@@ -10,6 +10,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { parseLlmJson } from '../../common/utils/llm-json.util';
 import { GenerationHistoryService } from '../generation-history/generation-history.service';
 import { BoampClient } from './boamp.client';
+import { BraveSearchClient, type WebSnippet } from './brave-search.client';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -29,6 +30,7 @@ export interface AoAnalysisResult {
   boampHistory: Awaited<
     ReturnType<BoampClient['fetchAttributionHistory']>
   >;
+  webSnippets: WebSnippet[];
   tokensUsed: number;
 }
 
@@ -41,6 +43,7 @@ export class AoService {
     private readonly anthropic: AnthropicService,
     private readonly prisma: PrismaService,
     private readonly history: GenerationHistoryService,
+    private readonly brave: BraveSearchClient,
   ) {}
 
   async search(query: AoSearchQueryDto) {
@@ -85,10 +88,18 @@ export class AoService {
       ? await this.boamp.fetchAttributionHistory(ao.buyer)
       : [];
 
-    // 2) Pre-computed signals
+    // 2) Brave Search — contexte web sur l'acheteur (silencieux si désactivé)
+    const topTitulaire = this.dominantTitulaire(boampHistory);
+    const webSnippets = await this.brave.searchBuyerContext({
+      buyer: ao.buyer ?? '',
+      aoTitle: ao.title,
+      topTitulaire,
+    });
+
+    // 3) Pre-computed signals
     const signals = this.computeSignals(ao, boampHistory);
 
-    // 3) TJM profiles for context
+    // 4) TJM profiles for context
     const grids = await this.prisma.pricingGrid.findMany({
       select: { profileTitle: true },
       distinct: ['profileTitle'],
@@ -99,7 +110,7 @@ export class AoService {
       .slice(0, 30)
       .join(', ');
 
-    // 4) Global system prompt (configurable in admin)
+    // 5) Global system prompt (configurable in admin)
     const globalPrompt = await this.prisma.systemPrompt.findUnique({
       where: { name: 'prompt_global' },
     });
@@ -112,6 +123,7 @@ export class AoService {
       profilesList,
       boampHistory,
       signals,
+      webSnippets,
       rcText,
     );
 
@@ -141,6 +153,7 @@ export class AoService {
       recommendation: parsed.recommendation ?? 'caution',
       recommendationText: parsed.recommendation_text ?? '',
       boampHistory,
+      webSnippets,
       tokensUsed: result.usage.inputTokens + result.usage.outputTokens,
     };
 
@@ -192,12 +205,7 @@ export class AoService {
     }
 
     if (boampHistory.length > 0) {
-      const counts = new Map<string, number>();
-      for (const item of boampHistory) {
-        if (item.titulaire) {
-          counts.set(item.titulaire, (counts.get(item.titulaire) ?? 0) + 1);
-        }
-      }
+      const counts = this.titulaireCounts(boampHistory);
       for (const [name, count] of counts.entries()) {
         if (count >= 2) {
           signals.push({
@@ -211,11 +219,38 @@ export class AoService {
     return signals;
   }
 
+  private titulaireCounts(
+    boampHistory: Awaited<ReturnType<BoampClient['fetchAttributionHistory']>>,
+  ): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const item of boampHistory) {
+      if (item.titulaire) {
+        counts.set(item.titulaire, (counts.get(item.titulaire) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }
+
+  /** Titulaire le plus fréquent dans l'historique BOAMP, ou `null` si aucun. */
+  private dominantTitulaire(
+    boampHistory: Awaited<ReturnType<BoampClient['fetchAttributionHistory']>>,
+  ): string | null {
+    const counts = this.titulaireCounts(boampHistory);
+    let top: { name: string; count: number } | null = null;
+    for (const [name, count] of counts.entries()) {
+      if (!top || count > top.count) {
+        top = { name, count };
+      }
+    }
+    return top?.name ?? null;
+  }
+
   private buildUserMessage(
     ao: AnalyseAoDto['ao'],
     profilesList: string,
     boampHistory: Awaited<ReturnType<BoampClient['fetchAttributionHistory']>>,
     signals: AnalysisSignal[],
+    webSnippets: WebSnippet[],
     rcText?: string,
   ): string {
     const historyLines =
@@ -237,6 +272,16 @@ export class AoService {
         ? signals.map((s) => `[${s.level}] ${s.text}`).join('\n')
         : 'Aucun signal pré-calculé.';
 
+    const webBlock =
+      webSnippets.length > 0
+        ? `
+
+## Résultats web sur l'acheteur
+${webSnippets
+  .map((s) => `[${s.label}] ${s.title}\n${s.description}`)
+  .join('\n')}`
+        : '';
+
     return `Analyse cet appel d'offres public informatique.
 
 ## AO
@@ -254,7 +299,7 @@ ${profilesList || 'non disponible'}
 ${historyLines}
 
 ## Signaux pré-calculés
-${signalLines}${
+${signalLines}${webBlock}${
       rcText
         ? `
 

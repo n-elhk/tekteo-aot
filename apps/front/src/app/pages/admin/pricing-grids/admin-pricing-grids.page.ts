@@ -2,17 +2,21 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom, switchMap, tap } from 'rxjs';
 import {
   PricingGrid,
   PricingGridsService,
 } from '../../../core/pricing-grids/pricing-grids.service';
-import { AppDialogService } from '../../../core/dialog/app-dialog.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
 import { ToastService } from '../../../core/notifications/toast.service';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { Card } from '../../../shared/ui/card/card';
 import { Button } from '../../../shared/ui/button/button';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { ExperienceLevelBadge } from '../../../shared/ui/experience-level-badge/experience-level-badge';
 import {
   PricingGridEditDialog,
@@ -28,7 +32,7 @@ import {
 })
 export class AdminPricingGridsPage {
   private readonly service = inject(PricingGridsService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly toaster = inject(ToastService);
   private readonly authStore = inject(AuthStore);
 
@@ -73,48 +77,39 @@ export class AdminPricingGridsPage {
     await this.openDialog(grid);
   }
 
-  protected async deleteGrid(grid: PricingGrid): Promise<void> {
-    const ref = this.dialog.open<ConfirmDialog, void, boolean>(ConfirmDialog, {
-      data: undefined,
-      providers: [
-        {
-          provide: ConfirmDialog.DATA,
-          useValue: {
-            title: 'Supprimer cette grille ?',
-            description: `« ${grid.profileTitle} » sera définitivement supprimée.`,
-            confirmLabel: 'Supprimer',
-            variant: 'danger' as const,
-          },
-        },
-      ],
-    });
-    const confirmed = await firstValueFrom(ref.closed);
-    if (!confirmed) return;
-    this.service.remove(grid.id).subscribe({
-      next: () => {
-        this.toaster.success({ title: 'Grille supprimée' });
-        this.resource.reload();
+  protected deleteGrid(grid: PricingGrid): void {
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
+      ...APP_DIALOG_CONFIG,
+      data: {
+        title: 'Supprimer cette grille ?',
+        description: `« ${grid.profileTitle} » sera définitivement supprimée.`,
+        confirmLabel: 'Supprimer',
+        variant: 'danger',
       },
-      error: () =>
-        this.toaster.error({
-          title: 'Suppression impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        }),
     });
+
+    ref.closed
+      .pipe(
+        filter(Boolean),
+        switchMap(() => this.service.remove(grid.id)),
+        tap(() => {
+          this.toaster.success({ title: 'Grille supprimée' });
+          this.resource.reload();
+        }),
+      )
+      .subscribe({
+        error: () =>
+          this.toaster.error({
+            title: 'Suppression impossible',
+            description: 'Veuillez réessayer dans un instant.',
+          }),
+      });
   }
 
   private async openDialog(grid: PricingGrid | null): Promise<void> {
-    const ref = this.dialog.open<PricingGridEditDialog, void, PricingGrid | null>(
+    const ref = this.dialog.open<PricingGrid | null, PricingGridEditDialogData, PricingGridEditDialog>(
       PricingGridEditDialog,
-      {
-        data: undefined,
-        providers: [
-          {
-            provide: PricingGridEditDialog.DATA,
-            useValue: { grid } satisfies PricingGridEditDialogData,
-          },
-        ],
-      },
+      { ...APP_DIALOG_CONFIG, data: { grid } },
     );
     const saved = await firstValueFrom(ref.closed);
     if (saved) this.resource.reload();

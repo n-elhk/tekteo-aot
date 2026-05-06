@@ -8,6 +8,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
+import { EMPTY_PAGINATED_RESPONSE } from '@org/types';
 import { GenerationHistoryService } from '../../core/generation-history/generation-history.service';
 import {
   GenerationHistoryEntry,
@@ -84,23 +85,23 @@ export class AoAnalysesListPage {
         pageSize: PAGE_SIZE,
       });
     },
+    defaultValue: EMPTY_PAGINATED_RESPONSE,
   });
 
   protected readonly isLoading = computed(() => this.resource.isLoading());
   protected readonly hasError = computed(
     () => this.resource.error() !== undefined,
   );
-  protected readonly total = computed(() => this.resource.value()?.total ?? 0);
+  protected readonly total = computed(() => this.resource.value().total);
   protected readonly totalPages = computed(() =>
     Math.max(1, Math.ceil(this.total() / PAGE_SIZE)),
   );
 
-  protected readonly entries = computed<EnrichedEntry[]>(() => {
-    const items = this.resource.value()?.items ?? [];
-    return items.map((entry) => enrich(entry));
-  });
+  protected readonly entries = computed(() =>
+    this.resource.value().items.map((entry) => enrich(entry)),
+  );
 
-  protected readonly sorted = computed<EnrichedEntry[]>(() => {
+  protected readonly sorted = computed(() => {
     const list = [...this.entries()];
     const sort = this.sort();
     list.sort((a, b) => {
@@ -126,8 +127,8 @@ export class AoAnalysesListPage {
     return list;
   });
 
-  protected onSortChange(value: string): void {
-    this.sort.set(value as SortValue);
+  protected onSortChange(value: SortValue): void {
+    this.sort.set(value);
   }
 
   protected goToPage(next: number): void {

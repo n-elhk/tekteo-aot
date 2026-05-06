@@ -97,3 +97,33 @@ export interface DashboardOverview {
     updatedAt: string;
   }>;
 }
+// Pagination
+// ============================================================
+
+/** Query params standards pour les endpoints paginés. */
+export interface PaginationQuery {
+  page: number;
+  pageSize: number;
+}
+
+/** Forme de réponse standard pour les endpoints de liste paginés. */
+export interface PaginatedResponse<T> {
+  readonly items: ReadonlyArray<T>;
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
+}
+
+/**
+ * Valeur par défaut prête à passer dans `rxResource({ defaultValue: EMPTY_PAGINATED_RESPONSE })`
+ * pour les ressources paginées (page absente / non encore chargée).
+ *
+ * Typée `PaginatedResponse<never>` : assignable à tout `PaginatedResponse<T>`
+ * grâce à la covariance de `ReadonlyArray`.
+ */
+export const EMPTY_PAGINATED_RESPONSE: PaginatedResponse<never> = {
+  items: [],
+  total: 0,
+  page: 0,
+  pageSize: 20,
+};

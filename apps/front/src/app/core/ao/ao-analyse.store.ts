@@ -11,9 +11,11 @@ import { AoAnalysisResult, AoItem } from './ao.model';
 export class AoAnalyseStore {
   private readonly _selected = signal<AoItem | null>(null);
   private readonly _preloadedResult = signal<AoAnalysisResult | null>(null);
+  private readonly _pendingRc = signal<string | null>(null);
 
   readonly selected = this._selected.asReadonly();
   readonly preloadedResult = this._preloadedResult.asReadonly();
+  readonly pendingRc = this._pendingRc.asReadonly();
 
   select(ao: AoItem, preloadedResult: AoAnalysisResult | null = null): void {
     this._selected.set(ao);
@@ -23,10 +25,26 @@ export class AoAnalyseStore {
   clear(): void {
     this._selected.set(null);
     this._preloadedResult.set(null);
+    this._pendingRc.set(null);
   }
 
   /** Une fois consommé par la page Analyse, oublier le résultat préchargé. */
   consumePreloadedResult(): void {
     this._preloadedResult.set(null);
+  }
+
+  /**
+   * Pré-positionne le texte du règlement de consultation extrait depuis la
+   * Veille, qui sera lu une fois par la page Analyse.
+   */
+  setPendingRc(text: string | null): void {
+    this._pendingRc.set(text);
+  }
+
+  /** Renvoie puis efface le RC pré-positionné. */
+  consumePendingRc(): string | null {
+    const value = this._pendingRc();
+    if (value !== null) this._pendingRc.set(null);
+    return value;
   }
 }

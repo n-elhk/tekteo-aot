@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { firstValueFrom } from 'rxjs';
+import { filter, finalize, switchMap, tap } from 'rxjs';
 import {
   BpuLine,
   BpuLineType,
@@ -8,11 +8,15 @@ import {
   BpuUnit,
 } from '../../core/bpu/bpu.service';
 import { ToastService } from '../../core/notifications/toast.service';
-import { AppDialogService } from '../../core/dialog/app-dialog.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog';
 
 const UNITS: ReadonlyArray<{ value: BpuUnit; label: string }> = [
   { value: 'jour', label: 'Jour' },
@@ -39,7 +43,7 @@ const LINE_TYPES: ReadonlyArray<{ value: BpuLineType; label: string }> = [
 export class BpuPanel {
   private readonly bpuService = inject(BpuService);
   private readonly toaster = inject(ToastService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly authStore = inject(AuthStore);
 
   readonly projectId = input.required<string>();
@@ -135,40 +139,37 @@ export class BpuPanel {
     this.updateField(line, field, num as never);
   }
 
-  protected async deleteLine(line: BpuLine): Promise<void> {
-    const ref = this.dialog.open<ConfirmDialog, void, boolean>(ConfirmDialog, {
-      data: undefined,
-      providers: [
-        {
-          provide: ConfirmDialog.DATA,
-          useValue: {
-            title: 'Supprimer cette ligne ?',
-            description: line.profileTitle
-              ? `« ${line.profileTitle} » sera supprimée.`
-              : 'Cette ligne sera supprimée.',
-            confirmLabel: 'Supprimer',
-            variant: 'danger' as const,
-          },
-        },
-      ],
-    });
-    const confirmed = await firstValueFrom(ref.closed);
-    if (!confirmed) return;
-    this.busyId.set(line.id);
-    this.bpuService.remove(line.id).subscribe({
-      next: () => {
-        this.busyId.set(null);
-        this.toaster.success({ title: 'Ligne supprimée' });
-        this.resource.reload();
-      },
-      error: () => {
-        this.busyId.set(null);
-        this.toaster.error({
-          title: 'Suppression impossible',
-          description: 'Veuillez réessayer.',
-        });
+  protected deleteLine(line: BpuLine): void {
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
+      ...APP_DIALOG_CONFIG,
+      data: {
+        title: 'Supprimer cette ligne ?',
+        description: line.profileTitle
+          ? `« ${line.profileTitle} » sera supprimée.`
+          : 'Cette ligne sera supprimée.',
+        confirmLabel: 'Supprimer',
+        variant: 'danger',
       },
     });
+
+    ref.closed
+      .pipe(
+        filter(Boolean),
+        tap(() => this.busyId.set(line.id)),
+        switchMap(() => this.bpuService.remove(line.id)),
+        tap(() => {
+          this.toaster.success({ title: 'Ligne supprimée' });
+          this.resource.reload();
+        }),
+        finalize(() => this.busyId.set(null)),
+      )
+      .subscribe({
+        error: () =>
+          this.toaster.error({
+            title: 'Suppression impossible',
+            description: 'Veuillez réessayer.',
+          }),
+      });
   }
 
   protected formatPrice(value: number): string {

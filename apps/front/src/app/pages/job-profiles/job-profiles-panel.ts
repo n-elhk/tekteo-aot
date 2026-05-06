@@ -4,7 +4,8 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import type { JobProfile } from '../../core/job-profiles/job-profile.model';
 import { JobProfilesService } from '../../core/job-profiles/job-profiles.service';
-import { AppDialogService } from '../../core/dialog/app-dialog.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
 import { ToastService } from '../../core/notifications/toast.service';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Card } from '../../shared/ui/card/card';
@@ -34,7 +35,7 @@ import {
 })
 export class JobProfilesPanel {
   private readonly profilesService = inject(JobProfilesService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly toaster = inject(ToastService);
   private readonly authStore = inject(AuthStore);
 
@@ -76,17 +77,9 @@ export class JobProfilesPanel {
   }
 
   protected async openCreate(): Promise<void> {
-    const ref = this.dialog.open<JobProfileCreateDialog, void, JobProfile | null>(
+    const ref = this.dialog.open<JobProfile | null, JobProfileCreateDialogData, JobProfileCreateDialog>(
       JobProfileCreateDialog,
-      {
-        data: undefined,
-        providers: [
-          {
-            provide: JobProfileCreateDialog.DATA,
-            useValue: { projectId: this.projectId() } satisfies JobProfileCreateDialogData,
-          },
-        ],
-      },
+      { ...APP_DIALOG_CONFIG, data: { projectId: this.projectId() } },
     );
     const created = await firstValueFrom(ref.closed);
     if (created) {

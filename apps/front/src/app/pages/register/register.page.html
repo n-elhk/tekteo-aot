@@ -127,15 +127,6 @@
               {{ registerForm.confirmPassword().errors()[0].message }}
             </p>
           }
-          @if (
-            registerForm.confirmPassword().touched() &&
-            registerForm.confirmPassword().errors().length === 0 &&
-            !passwordsMatch()
-          ) {
-            <p class="text-xs font-medium text-red-600">
-              Les mots de passe ne correspondent pas.
-            </p>
-          }
         </div>
 
         <!-- Erreur serveur -->

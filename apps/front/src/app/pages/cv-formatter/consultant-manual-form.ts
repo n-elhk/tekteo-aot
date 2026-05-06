@@ -6,6 +6,19 @@ import {
   output,
   signal,
 } from '@angular/core';
+import {
+  applyEach,
+  email,
+  form,
+  FormField,
+  FormRoot,
+  maxLength,
+  minLength,
+  required,
+  submit,
+  validate,
+} from '@angular/forms/signals';
+import { firstValueFrom } from 'rxjs';
 import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
 import type { CreateConsultantCvDto } from '../../core/consultant-cvs/consultant-cv.model';
 import { ToastService } from '../../core/notifications/toast.service';
@@ -67,48 +80,117 @@ const EMPTY_STATE: FormState = {
   experiences: [],
 };
 
+const blankOnly = (value: string) =>
+  value.length > 0 && value.trim().length === 0
+    ? { kind: 'blank', message: 'Ne peut contenir que des espaces' }
+    : undefined;
+
 @Component({
   selector: 'app-consultant-manual-form',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Button],
+  imports: [Button, FormRoot, FormField],
   templateUrl: './consultant-manual-form.html',
 })
 export class ConsultantManualForm {
   private readonly cvsService = inject(ConsultantCvsService);
   private readonly toaster = inject(ToastService);
 
-  protected readonly state = signal<FormState>(structuredClone(EMPTY_STATE));
-  protected readonly submitting = signal(false);
+  readonly created = output<void>();
+
+  protected readonly model = signal<FormState>(structuredClone(EMPTY_STATE));
+
+  protected readonly consultantForm = form(
+    this.model,
+    (path) => {
+      required(path.firstName, { message: 'Prénom requis' });
+      maxLength(path.firstName, 80, { message: 'Au maximum 80 caractères' });
+      validate(path.firstName, ({ value }) => blankOnly(value()));
+
+      required(path.lastName, { message: 'Nom requis' });
+      maxLength(path.lastName, 80, { message: 'Au maximum 80 caractères' });
+      validate(path.lastName, ({ value }) => blankOnly(value()));
+
+      required(path.role, { message: "L'intitulé du poste est requis" });
+      minLength(path.role, 2, { message: 'Au moins 2 caractères' });
+      maxLength(path.role, 150, { message: 'Au maximum 150 caractères' });
+      validate(path.role, ({ value }) => blankOnly(value()));
+
+      email(path.email, { message: 'Adresse e-mail invalide' });
+      maxLength(path.email, 200, { message: 'Au maximum 200 caractères' });
+      maxLength(path.phone, 50, { message: 'Au maximum 50 caractères' });
+      maxLength(path.location, 200, { message: 'Au maximum 200 caractères' });
+      maxLength(path.summary, 2000, { message: 'Au maximum 2 000 caractères' });
+
+      applyEach(path.languages, (lang) => {
+        required(lang.name, { message: 'Langue requise' });
+        maxLength(lang.name, 80, { message: 'Au maximum 80 caractères' });
+        maxLength(lang.levelLabel, 80, { message: 'Au maximum 80 caractères' });
+      });
+
+      applyEach(path.certifications, (cert) => {
+        required(cert.name, { message: 'Nom requis' });
+        maxLength(cert.name, 200, { message: 'Au maximum 200 caractères' });
+        maxLength(cert.year, 10, { message: 'Au maximum 10 caractères' });
+      });
+
+      applyEach(path.education, (edu) => {
+        required(edu.degree, { message: 'Diplôme requis' });
+        required(edu.school, { message: 'École requise' });
+        maxLength(edu.degree, 200, { message: 'Au maximum 200 caractères' });
+        maxLength(edu.school, 200, { message: 'Au maximum 200 caractères' });
+        maxLength(edu.year, 10, { message: 'Au maximum 10 caractères' });
+      });
+
+      applyEach(path.experiences, (exp) => {
+        required(exp.role, { message: 'Rôle requis' });
+        required(exp.company, { message: 'Entreprise requise' });
+        maxLength(exp.role, 200, { message: 'Au maximum 200 caractères' });
+        maxLength(exp.company, 200, { message: 'Au maximum 200 caractères' });
+        maxLength(exp.dateStart, 50, { message: 'Au maximum 50 caractères' });
+        maxLength(exp.dateEnd, 50, { message: 'Au maximum 50 caractères' });
+        maxLength(exp.mission, 4000, { message: 'Au maximum 4 000 caractères' });
+      });
+    },
+    {
+      submission: {
+        action: async () => {
+          try {
+            await firstValueFrom(this.cvsService.create(this.buildDto()));
+            this.toaster.success({
+              title: 'Consultant créé',
+              description: this.fullName(),
+            });
+            this.model.set(structuredClone(EMPTY_STATE));
+            this.created.emit();
+            return undefined;
+          } catch (err: unknown) {
+            this.toaster.error({
+              title: 'Création impossible',
+              description: extractErrorMessage(err),
+            });
+            return undefined;
+          }
+        },
+        onInvalid: (field) => {
+          field().markAsTouched();
+        },
+      },
+    },
+  );
 
   protected readonly fullName = computed(() => {
-    const s = this.state();
+    const s = this.model();
     return [s.firstName, s.lastName].filter(Boolean).join(' ').trim();
   });
 
-  protected readonly canSubmit = computed(
-    () =>
-      !this.submitting() &&
-      this.fullName().length > 0 &&
-      this.state().role.trim().length > 0,
-  );
-
-  readonly created = output<void>();
-
-  protected updateField<K extends keyof FormState>(
-    key: K,
-    value: FormState[K],
-  ): void {
-    this.state.update((s) => ({ ...s, [key]: value }));
-  }
-
-  // Listes simples (chips)
+  // Listes de chips (skills/tools) — gérées hors form, ajout via Entrée.
   protected addSkill(value: string): void {
     const v = value.trim();
     if (!v) return;
-    this.state.update((s) => ({ ...s, skills: [...s.skills, v] }));
+    this.model.update((s) => ({ ...s, skills: [...s.skills, v] }));
   }
   protected removeSkill(i: number): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       skills: s.skills.filter((_, idx) => idx !== i),
     }));
@@ -117,86 +199,56 @@ export class ConsultantManualForm {
   protected addTool(value: string): void {
     const v = value.trim();
     if (!v) return;
-    this.state.update((s) => ({ ...s, tools: [...s.tools, v] }));
+    this.model.update((s) => ({ ...s, tools: [...s.tools, v] }));
   }
   protected removeTool(i: number): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       tools: s.tools.filter((_, idx) => idx !== i),
     }));
   }
 
   protected addLanguage(): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       languages: [...s.languages, { name: '', levelLabel: '' }],
     }));
   }
-  protected updateLanguage(i: number, patch: Partial<LanguageEntry>): void {
-    this.state.update((s) => ({
-      ...s,
-      languages: s.languages.map((l, idx) =>
-        idx === i ? { ...l, ...patch } : l,
-      ),
-    }));
-  }
   protected removeLanguage(i: number): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       languages: s.languages.filter((_, idx) => idx !== i),
     }));
   }
 
   protected addCertification(): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       certifications: [...s.certifications, { name: '', year: '' }],
     }));
   }
-  protected updateCertification(
-    i: number,
-    patch: Partial<CertificationEntry>,
-  ): void {
-    this.state.update((s) => ({
-      ...s,
-      certifications: s.certifications.map((c, idx) =>
-        idx === i ? { ...c, ...patch } : c,
-      ),
-    }));
-  }
   protected removeCertification(i: number): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       certifications: s.certifications.filter((_, idx) => idx !== i),
     }));
   }
 
   protected addEducation(): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       education: [...s.education, { degree: '', school: '', year: '' }],
     }));
   }
-  protected updateEducation(
-    i: number,
-    patch: Partial<EducationEntry>,
-  ): void {
-    this.state.update((s) => ({
-      ...s,
-      education: s.education.map((e, idx) =>
-        idx === i ? { ...e, ...patch } : e,
-      ),
-    }));
-  }
   protected removeEducation(i: number): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       education: s.education.filter((_, idx) => idx !== i),
     }));
   }
 
   protected addExperience(): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       experiences: [
         ...s.experiences,
@@ -204,51 +256,19 @@ export class ConsultantManualForm {
       ],
     }));
   }
-  protected updateExperience(
-    i: number,
-    patch: Partial<ExperienceEntry>,
-  ): void {
-    this.state.update((s) => ({
-      ...s,
-      experiences: s.experiences.map((e, idx) =>
-        idx === i ? { ...e, ...patch } : e,
-      ),
-    }));
-  }
   protected removeExperience(i: number): void {
-    this.state.update((s) => ({
+    this.model.update((s) => ({
       ...s,
       experiences: s.experiences.filter((_, idx) => idx !== i),
     }));
   }
 
-  protected submit(): void {
-    if (!this.canSubmit()) return;
-    this.submitting.set(true);
-    const dto = this.buildDto();
-
-    this.cvsService.create(dto).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.toaster.success({
-          title: 'Consultant créé',
-          description: this.fullName(),
-        });
-        this.state.set(structuredClone(EMPTY_STATE));
-        this.created.emit();
-      },
-      error: (err: unknown) => {
-        this.submitting.set(false);
-        this.toaster.error({
-          title: 'Création impossible',
-          description: extractErrorMessage(err),
-        });
-      },
-    });
+  protected onSubmit(): void {
+    void submit(this.consultantForm);
   }
 
   private buildDto(): CreateConsultantCvDto {
-    const s = this.state();
+    const s = this.model();
     return {
       consultantName: this.fullName(),
       consultantTitle: s.role.trim(),

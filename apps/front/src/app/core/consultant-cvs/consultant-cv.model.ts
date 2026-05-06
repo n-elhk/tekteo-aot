@@ -5,6 +5,7 @@ import type {
   CvTemplateValue,
   GeneratedCvDto,
 } from '@org/schemas';
+import type { PaginatedResponse } from '@org/types';
 
 export type {
   CvData,
@@ -69,12 +70,7 @@ export interface ConsultantCv {
 }
 
 /** Page paginée de la liste consultants. */
-export interface ConsultantCvsPage {
-  readonly items: ConsultantCv[];
-  readonly total: number;
-  readonly page: number;
-  readonly pageSize: number;
-}
+export type ConsultantCvsPage = PaginatedResponse<ConsultantCv>;
 
 /** Réponse de POST /import-from-file (multi). */
 export interface CvImportBulkResponse {

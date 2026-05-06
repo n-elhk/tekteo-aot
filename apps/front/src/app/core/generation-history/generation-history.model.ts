@@ -1,4 +1,5 @@
 import type { GenerationModuleValue } from '@org/schemas';
+import type { PaginatedResponse } from '@org/types';
 import type { AoAnalysisResult, AoItem } from '../ao/ao.model';
 
 export type GenerationModule = GenerationModuleValue;
@@ -33,12 +34,7 @@ export interface GenerationHistoryEntry {
 }
 
 /** Réponse paginée de `GET /generation-history`. */
-export interface GenerationHistoryPage {
-  readonly items: ReadonlyArray<GenerationHistoryEntry>;
-  readonly total: number;
-  readonly page: number;
-  readonly pageSize: number;
-}
+export type GenerationHistoryPage = PaginatedResponse<GenerationHistoryEntry>;
 
 /** Statistiques agrégées par module. */
 export interface GenerationHistoryStats {

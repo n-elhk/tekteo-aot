@@ -9,12 +9,13 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import type { DashboardOverview, ProjectStatus } from '@org/types';
 import { AuthStore } from '../../core/auth/auth.store';
-import { DashboardService } from '../../core/dashboard/dashboard.service';
-import { AppDialogService } from '../../core/dialog/app-dialog.service';
-import { Button } from '../../shared/ui/button/button';
 import { Card } from '../../shared/ui/card/card';
-import { statusLabel as resolveStatusLabel } from './status-label';
+import { Button } from '../../shared/ui/button/button';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
+import { DashboardService } from '../../core/dashboard/dashboard.service';
 import { WelcomeModal } from './welcome-modal';
+import { statusLabel as resolveStatusLabel } from './status-label';
 
 interface StatusTile {
   readonly key: 'total' | ProjectStatus;
@@ -58,7 +59,7 @@ const MODULE_LABELS: Record<string, string> = {
 })
 export class DashboardPage {
   private readonly authStore = inject(AuthStore);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly dashboardService = inject(DashboardService);
 
   protected readonly user = this.authStore.user;
@@ -130,7 +131,9 @@ export class DashboardPage {
   }
 
   protected openDemoDialog(): void {
-    this.dialog.open<WelcomeModal, undefined, 'ok' | 'later'>(WelcomeModal);
+    this.dialog.open<'ok' | 'later', undefined, WelcomeModal>(WelcomeModal, {
+      ...APP_DIALOG_CONFIG,
+    });
   }
 
   protected statusLabel(status: ProjectStatus) {

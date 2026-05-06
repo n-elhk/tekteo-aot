@@ -9,6 +9,7 @@ import {
   minLength,
   required,
   submit,
+  validate,
 } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 import { Button } from '../../shared/ui/button/button';
@@ -44,46 +45,55 @@ export class RegisterPage {
     confirmPassword: '',
   });
 
-  protected readonly registerForm = form(this.model, (path) => {
-    required(path.name, { message: 'Nom requis' });
-    minLength(path.name, 2, { message: 'Au moins 2 caractères' });
-    maxLength(path.name, 80, { message: 'Au maximum 80 caractères' });
-    required(path.email, { message: 'Adresse e-mail requise' });
-    email(path.email, { message: 'Adresse e-mail invalide' });
-    required(path.password, { message: 'Mot de passe requis' });
-    minLength(path.password, 8, { message: 'Au moins 8 caractères' });
-    required(path.confirmPassword, { message: 'Confirmation requise' });
-  });
-
   protected readonly serverError = signal<string | null>(null);
 
-  protected readonly passwordsMatch = computed(() => {
-    const { password, confirmPassword } = this.model();
-    return password === confirmPassword;
-  });
+  protected readonly registerForm = form(
+    this.model,
+    (path) => {
+      required(path.name, { message: 'Nom requis' });
+      minLength(path.name, 2, { message: 'Au moins 2 caractères' });
+      maxLength(path.name, 80, { message: 'Au maximum 80 caractères' });
+      required(path.email, { message: 'Adresse e-mail requise' });
+      email(path.email, { message: 'Adresse e-mail invalide' });
+      required(path.password, { message: 'Mot de passe requis' });
+      minLength(path.password, 8, { message: 'Au moins 8 caractères' });
+      required(path.confirmPassword, { message: 'Confirmation requise' });
+      validate(path.confirmPassword, ({ value, valueOf }) =>
+        value() && value() !== valueOf(path.password)
+          ? {
+              kind: 'passwordMismatch',
+              message: 'Les mots de passe ne correspondent pas',
+            }
+          : undefined,
+      );
+    },
+    {
+      submission: {
+        action: async () => {
+          this.serverError.set(null);
+          try {
+            const { name, email, password } = this.model();
+            await firstValueFrom(this.authService.register({ name, email, password }));
+            this.router.navigateByUrl('/dashboard');
+            return undefined;
+          } catch (err: unknown) {
+            this.serverError.set(extractErrorMessage(err));
+            return undefined;
+          }
+        },
+        onInvalid: (field) => {
+          field().markAsTouched();
+        },
+      },
+    },
+  );
 
   protected readonly canSubmit = computed(
-    () =>
-      this.registerForm().valid() &&
-      this.passwordsMatch() &&
-      !this.registerForm().submitting(),
+    () => this.registerForm().valid() && !this.registerForm().submitting(),
   );
 
   protected onSubmit(): void {
-    submit(this.registerForm, async () => {
-      this.serverError.set(null);
-      if (!this.passwordsMatch()) {
-        this.serverError.set('Les mots de passe ne correspondent pas.');
-        return;
-      }
-      try {
-        const { name, email, password } = this.model();
-        await firstValueFrom(this.authService.register({ name, email, password }));
-        this.router.navigateByUrl('/dashboard');
-      } catch (err: unknown) {
-        this.serverError.set(extractErrorMessage(err));
-      }
-    });
+    void submit(this.registerForm);
   }
 }
 

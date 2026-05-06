@@ -40,30 +40,44 @@ export class LoginPage {
   ];
 
   protected readonly model = signal<LoginFormModel>({ email: '', password: '' });
-  protected readonly loginForm = form(this.model, (path) => {
-    required(path.email, { message: 'Adresse e-mail requise' });
-    email(path.email, { message: 'Adresse e-mail invalide' });
-    required(path.password, { message: 'Mot de passe requis' });
-    minLength(path.password, 8, { message: 'Au moins 8 caractères' });
-  });
-
   protected readonly serverError = signal<string | null>(null);
+
+  protected readonly loginForm = form(
+    this.model,
+    (path) => {
+      required(path.email, { message: 'Adresse e-mail requise' });
+      email(path.email, { message: 'Adresse e-mail invalide' });
+      required(path.password, { message: 'Mot de passe requis' });
+      minLength(path.password, 8, { message: 'Au moins 8 caractères' });
+    },
+    {
+      submission: {
+        action: async () => {
+          this.serverError.set(null);
+          try {
+            await firstValueFrom(this.authService.login(this.model()));
+            const redirectTo =
+              this.route.snapshot.queryParamMap.get('redirectTo') ?? '/dashboard';
+            this.router.navigateByUrl(redirectTo);
+            return undefined;
+          } catch (err: unknown) {
+            this.serverError.set(extractErrorMessage(err));
+            return undefined;
+          }
+        },
+        onInvalid: (field) => {
+          field().markAsTouched();
+        },
+      },
+    },
+  );
+
   protected readonly canSubmit = computed(
     () => this.loginForm().valid() && !this.loginForm().submitting(),
   );
 
   protected onSubmit(): void {
-    submit(this.loginForm, async () => {
-      this.serverError.set(null);
-      try {
-        await firstValueFrom(this.authService.login(this.model()));
-        const redirectTo =
-          this.route.snapshot.queryParamMap.get('redirectTo') ?? '/dashboard';
-        this.router.navigateByUrl(redirectTo);
-      } catch (err: unknown) {
-        this.serverError.set(extractErrorMessage(err));
-      }
-    });
+    void submit(this.loginForm);
   }
 }
 

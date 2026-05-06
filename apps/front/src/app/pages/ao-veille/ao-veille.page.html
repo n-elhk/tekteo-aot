@@ -1,14 +1,24 @@
 <div class="space-y-6">
   <!-- En-tête -->
-  <header class="space-y-1">
-    <p class="text-sm font-medium text-brand-700">Veille</p>
-    <h1 class="text-3xl font-semibold tracking-tight text-surface-900">
-      Veille d'appels d'offres
-    </h1>
-    <p class="text-sm text-surface-900/60">
-      Recherchez dans le BOAMP en temps réel, marquez vos favoris et lancez
-      une analyse IA en un clic.
-    </p>
+  <header class="flex flex-wrap items-start justify-between gap-3">
+    <div class="space-y-1">
+      <p class="text-sm font-medium text-brand-700">Veille</p>
+      <h1 class="text-3xl font-semibold tracking-tight text-surface-900">
+        Veille d'appels d'offres
+      </h1>
+      <p class="text-sm text-surface-900/60">
+        Recherchez dans le BOAMP en temps réel, marquez vos favoris et lancez
+        une analyse IA en un clic.
+      </p>
+    </div>
+    @if (favoritesCount() > 0) {
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.5L13.85 8.3l5.3.77-3.83 3.74.9 5.27L11.48 15.6 6.74 18.08l.9-5.27L3.81 9.07l5.3-.77z" />
+        </svg>
+        {{ favoritesCount() }} favori{{ favoritesCount() > 1 ? 's' : '' }}
+      </span>
+    }
   </header>
 
   <!-- Filtres -->
@@ -114,86 +124,189 @@
           Rechercher
         </app-button>
       </div>
+
+      <!-- Suggestions -->
+      <div class="flex flex-wrap items-center gap-2 pt-1 text-sm">
+        <span class="text-xs font-medium text-surface-900/70">Suggestions :</span>
+        @for (term of suggestions; track term) {
+          <button
+            type="button"
+            (click)="pickSuggestion(term)"
+            class="inline-flex items-center rounded-full border border-surface-200 bg-white px-3 py-1 text-xs font-medium text-surface-900/80 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          >
+            {{ term }}
+          </button>
+        }
+      </div>
     </form>
   </app-card>
 
-  <!-- Résultats -->
-  @if (!hasSearched()) {
-    <app-card>
-      <div class="flex flex-col items-center justify-center py-12 text-center">
-        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
-          <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" />
-          </svg>
-        </span>
-        <p class="mt-4 text-base font-medium text-surface-900">Lancez votre première recherche</p>
-        <p class="mt-1 max-w-sm text-sm text-surface-900/60">
-          Affinez les critères ci-dessus puis cliquez sur <strong>Rechercher</strong>
-          pour interroger le BOAMP en temps réel.
+  <!-- Onglets -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="inline-flex items-center gap-2" role="tablist" aria-label="Vue résultats ou favoris">
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'results'"
+        (click)="setActiveTab('results')"
+        class="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        [class.bg-brand-600]="activeTab() === 'results'"
+        [class.text-white]="activeTab() === 'results'"
+        [class.shadow-sm]="activeTab() === 'results'"
+        [class.bg-white]="activeTab() !== 'results'"
+        [class.text-surface-900]="activeTab() !== 'results'"
+        [class.border]="activeTab() !== 'results'"
+        [class.border-surface-200]="activeTab() !== 'results'"
+        [class.hover:border-brand-300]="activeTab() !== 'results'"
+      >
+        Résultats ({{ totalCount() }})
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'favoris'"
+        (click)="setActiveTab('favoris')"
+        class="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        [class.bg-brand-600]="activeTab() === 'favoris'"
+        [class.text-white]="activeTab() === 'favoris'"
+        [class.shadow-sm]="activeTab() === 'favoris'"
+        [class.bg-white]="activeTab() !== 'favoris'"
+        [class.text-surface-900]="activeTab() !== 'favoris'"
+        [class.border]="activeTab() !== 'favoris'"
+        [class.border-surface-200]="activeTab() !== 'favoris'"
+        [class.hover:border-brand-300]="activeTab() !== 'favoris'"
+      >
+        <svg viewBox="0 0 24 24" class="h-4 w-4" [attr.fill]="activeTab() === 'favoris' ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.5L13.85 8.3l5.3.77-3.83 3.74.9 5.27L11.48 15.6 6.74 18.08l.9-5.27L3.81 9.07l5.3-.77z" />
+        </svg>
+        Favoris ({{ favoritesCount() }})
+      </button>
+    </div>
+    @if (hasSearched()) {
+      <button
+        type="button"
+        (click)="refresh()"
+        [disabled]="isLoading()"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900/80 hover:border-brand-300 hover:text-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+      >
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-3M20 15a8 8 0 01-14 3" />
+        </svg>
+        Actualiser
+      </button>
+    }
+  </div>
+
+  <!-- Contenu -->
+  @if (activeTab() === 'results') {
+    @if (!hasSearched()) {
+      <app-card>
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+          <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+            <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" />
+            </svg>
+          </span>
+          <p class="mt-4 text-base font-medium text-surface-900">Lancez votre première recherche</p>
+          <p class="mt-1 max-w-sm text-sm text-surface-900/60">
+            Affinez les critères ci-dessus puis cliquez sur <strong>Rechercher</strong>
+            pour interroger le BOAMP en temps réel.
+          </p>
+        </div>
+      </app-card>
+    } @else if (hasError()) {
+      <app-card>
+        <p class="text-sm text-red-700" role="alert">
+          Le service BOAMP est temporairement indisponible. Réessayez dans quelques instants.
         </p>
+      </app-card>
+    } @else if (isLoading()) {
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        @for (placeholder of [1,2,3,4,5,6]; track placeholder) {
+          <div class="h-48 animate-pulse rounded-2xl bg-surface-100"></div>
+        }
       </div>
-    </app-card>
-  } @else if (hasError()) {
-    <app-card>
-      <p class="text-sm text-red-700" role="alert">
-        Le service BOAMP est temporairement indisponible. Réessayez dans quelques instants.
-      </p>
-    </app-card>
-  } @else if (isLoading()) {
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      @for (placeholder of [1,2,3,4,5,6]; track placeholder) {
-        <div class="h-48 animate-pulse rounded-2xl bg-surface-100"></div>
+    } @else if (displayList().length === 0) {
+      <app-card>
+        <p class="text-sm text-surface-900/70 text-center py-8">
+          Aucun appel d'offres ne correspond à vos critères. Essayez d'élargir la recherche.
+        </p>
+      </app-card>
+    } @else {
+      <div class="flex items-center justify-between text-sm text-surface-900/60">
+        <p>{{ totalCount() }} résultats</p>
+        <a routerLink="/analyses-ao" class="font-medium text-brand-700 hover:text-brand-800">
+          Voir mes analyses précédentes →
+        </a>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        @for (ao of displayList(); track ao.id) {
+          <app-ao-card
+            [ao]="ao"
+            [isFavorite]="isFavorite(ao)"
+            [favoriteBusy]="false"
+            [isImported]="isImported(ao)"
+            [isNew]="isNew(ao)"
+            [cctpBusy]="isCctpBusy(ao)"
+            (favoriteToggled)="toggleFavorite($event)"
+            (analyseRequested)="openAnalyseModal($event)"
+            (createProjectRequested)="createProject($event)"
+            (cctpFileSelected)="handleCctpFile($event)"
+          />
+        }
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages() > 1) {
+        <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+          <button
+            type="button"
+            [disabled]="currentPage() <= 1"
+            (click)="goToPage(currentPage() - 1)"
+            class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900 hover:border-brand-300 hover:text-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            ← Précédent
+          </button>
+          <span class="text-sm text-surface-900/70">
+            Page {{ currentPage() }} sur {{ totalPages() }}
+          </span>
+          <button
+            type="button"
+            [disabled]="currentPage() >= totalPages()"
+            (click)="goToPage(currentPage() + 1)"
+            class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900 hover:border-brand-300 hover:text-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            Suivant →
+          </button>
+        </nav>
       }
-    </div>
-  } @else if (results().length === 0) {
-    <app-card>
-      <p class="text-sm text-surface-900/70 text-center py-8">
-        Aucun appel d'offres ne correspond à vos critères. Essayez d'élargir la recherche.
-      </p>
-    </app-card>
+    }
   } @else {
-    <div class="flex items-center justify-between text-sm text-surface-900/60">
-      <p>{{ totalCount() }} résultats</p>
-      <a routerLink="/analyses-ao" class="font-medium text-brand-700 hover:text-brand-800">
-        Voir mes analyses précédentes →
-      </a>
-    </div>
-
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      @for (ao of results(); track ao.id) {
-        <app-ao-card
-          [ao]="ao"
-          [isFavorite]="isFavorite(ao)"
-          [favoriteBusy]="false"
-          (favoriteToggled)="toggleFavorite($event)"
-          (analyseRequested)="analyse($event)"
-        />
-      }
-    </div>
-
-    <!-- Pagination -->
-    @if (totalPages() > 1) {
-      <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
-        <button
-          type="button"
-          [disabled]="currentPage() <= 1"
-          (click)="goToPage(currentPage() - 1)"
-          class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900 hover:border-brand-300 hover:text-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
-        >
-          ← Précédent
-        </button>
-        <span class="text-sm text-surface-900/70">
-          Page {{ currentPage() }} sur {{ totalPages() }}
-        </span>
-        <button
-          type="button"
-          [disabled]="currentPage() >= totalPages()"
-          (click)="goToPage(currentPage() + 1)"
-          class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-900 hover:border-brand-300 hover:text-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
-        >
-          Suivant →
-        </button>
-      </nav>
+    <!-- Onglet favoris -->
+    @if (displayList().length === 0) {
+      <app-card>
+        <p class="text-sm text-surface-900/70 text-center py-8">
+          Aucun favori pour l'instant. Cliquez sur l'étoile d'un AO pour le retrouver ici.
+        </p>
+      </app-card>
+    } @else {
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        @for (ao of displayList(); track ao.id) {
+          <app-ao-card
+            [ao]="ao"
+            [isFavorite]="isFavorite(ao)"
+            [favoriteBusy]="false"
+            [isImported]="isImported(ao)"
+            [isNew]="isNew(ao)"
+            [cctpBusy]="isCctpBusy(ao)"
+            (favoriteToggled)="toggleFavorite($event)"
+            (analyseRequested)="openAnalyseModal($event)"
+            (createProjectRequested)="createProject($event)"
+            (cctpFileSelected)="handleCctpFile($event)"
+          />
+        }
+      </div>
     }
   }
 </div>

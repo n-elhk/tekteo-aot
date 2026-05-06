@@ -4,7 +4,8 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import type { Section } from '@org/types';
 import { SectionsService } from '../../core/sections/sections.service';
-import { AppDialogService } from '../../core/dialog/app-dialog.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
@@ -29,7 +30,7 @@ import {
 })
 export class SectionsPanel {
   private readonly sectionsService = inject(SectionsService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly authStore = inject(AuthStore);
 
   readonly projectId = input.required<string>();
@@ -46,19 +47,14 @@ export class SectionsPanel {
   protected readonly hasError = computed(() => this.resource.error() !== undefined);
 
   protected async openCreate(): Promise<void> {
-    const ref = this.dialog.open<SectionCreateDialog, void, Section | null>(
+    const ref = this.dialog.open<Section | null, SectionCreateDialogData, SectionCreateDialog>(
       SectionCreateDialog,
       {
-        data: undefined,
-        providers: [
-          {
-            provide: SectionCreateDialog.DATA,
-            useValue: {
-              projectId: this.projectId(),
-              nextOrderIndex: this.sections().length,
-            } satisfies SectionCreateDialogData,
-          },
-        ],
+        ...APP_DIALOG_CONFIG,
+        data: {
+          projectId: this.projectId(),
+          nextOrderIndex: this.sections().length,
+        },
       },
     );
     const created = await firstValueFrom(ref.closed);

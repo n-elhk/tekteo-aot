@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, InjectionToken, inject, signal, computed } from '@angular/core';
-import { DialogRef } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, inject, signal, computed } from '@angular/core';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import {
   FormField,
   FormRoot,
@@ -8,6 +8,7 @@ import {
   minLength,
   required,
   submit,
+  validate,
 } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 import type { Section } from '@org/types';
@@ -75,43 +76,59 @@ export interface SectionCreateDialogData {
   `,
 })
 export class SectionCreateDialog {
-  static readonly DATA = new InjectionToken<SectionCreateDialogData>('SectionCreateDialogData');
-
-  private readonly data = inject(SectionCreateDialog.DATA);
+  private readonly data = inject<SectionCreateDialogData>(DIALOG_DATA);
   private readonly dialogRef = inject(DialogRef<Section | null, SectionCreateDialog>);
   private readonly sectionsService = inject(SectionsService);
   private readonly toaster = inject(ToastService);
 
   protected readonly model = signal<Model>({ title: '' });
-  protected readonly sectionForm = form(this.model, (path) => {
-    required(path.title, { message: 'Le titre est requis' });
-    minLength(path.title, 1, { message: 'Au moins un caractère' });
-    maxLength(path.title, 200, { message: 'Au maximum 200 caractères' });
-  });
+  protected readonly sectionForm = form(
+    this.model,
+    (path) => {
+      required(path.title, { message: 'Le titre est requis' });
+      minLength(path.title, 1, { message: 'Au moins un caractère' });
+      maxLength(path.title, 200, { message: 'Au maximum 200 caractères' });
+      validate(path.title, ({ value }) =>
+        value().length > 0 && value().trim().length === 0
+          ? { kind: 'blank', message: 'Ne peut contenir que des espaces' }
+          : undefined,
+      );
+    },
+    {
+      submission: {
+        action: async () => {
+          try {
+            const section = await firstValueFrom(
+              this.sectionsService.create(this.data.projectId, {
+                title: this.model().title.trim(),
+                content: '',
+                orderIndex: this.data.nextOrderIndex,
+                status: 'brouillon',
+              }),
+            );
+            this.toaster.success({ title: 'Section créée' });
+            this.dialogRef.close(section);
+            return undefined;
+          } catch {
+            this.toaster.error({
+              title: 'Création impossible',
+              description: 'Veuillez réessayer dans un instant.',
+            });
+            return undefined;
+          }
+        },
+        onInvalid: (field) => {
+          field().markAsTouched();
+        },
+      },
+    },
+  );
   protected readonly canSubmit = computed(
     () => this.sectionForm().valid() && !this.sectionForm().submitting(),
   );
 
   protected onSubmit(): void {
-    submit(this.sectionForm, async () => {
-      try {
-        const section = await firstValueFrom(
-          this.sectionsService.create(this.data.projectId, {
-            title: this.model().title.trim(),
-            content: '',
-            orderIndex: this.data.nextOrderIndex,
-            status: 'brouillon',
-          }),
-        );
-        this.toaster.success({ title: 'Section créée' });
-        this.dialogRef.close(section);
-      } catch {
-        this.toaster.error({
-          title: 'Création impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        });
-      }
-    });
+    void submit(this.sectionForm);
   }
 
   protected cancel(): void {

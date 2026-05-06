@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, InjectionToken, computed, inject, signal } from '@angular/core';
-import { DialogRef } from '@angular/cdk/dialog';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import {
   FormField,
   FormRoot,
@@ -117,11 +117,7 @@ const LEVELS: ReadonlyArray<{ value: ExperienceLevel; label: string }> = [
   `,
 })
 export class JobProfileCreateDialog {
-  static readonly DATA = new InjectionToken<JobProfileCreateDialogData>(
-    'JobProfileCreateDialogData',
-  );
-
-  private readonly data = inject(JobProfileCreateDialog.DATA);
+  private readonly data = inject<JobProfileCreateDialogData>(DIALOG_DATA);
   private readonly dialogRef = inject(DialogRef<JobProfile | null, JobProfileCreateDialog>);
   private readonly profilesService = inject(JobProfilesService);
   private readonly toaster = inject(ToastService);
@@ -135,43 +131,56 @@ export class JobProfileCreateDialog {
     location: '',
   });
 
-  protected readonly profileForm = form(this.model, (path) => {
-    required(path.title, { message: "L'intitulé est requis" });
-    minLength(path.title, 2, { message: 'Au moins 2 caractères' });
-    maxLength(path.title, 200, { message: 'Au maximum 200 caractères' });
-    maxLength(path.location, 200, { message: 'Au maximum 200 caractères' });
-  });
+  protected readonly profileForm = form(
+    this.model,
+    (path) => {
+      required(path.title, { message: "L'intitulé est requis" });
+      minLength(path.title, 2, { message: 'Au moins 2 caractères' });
+      maxLength(path.title, 200, { message: 'Au maximum 200 caractères' });
+      maxLength(path.location, 200, { message: 'Au maximum 200 caractères' });
+    },
+    {
+      submission: {
+        action: async () => {
+          const m = this.model();
+          try {
+            const created = await firstValueFrom(
+              this.profilesService.create(this.data.projectId, {
+                title: m.title.trim(),
+                experienceLevel: m.experienceLevel,
+                location: m.location.trim(),
+                requiredSkills: [...this.requiredSkills()],
+                optionalSkills: [],
+                missions: '',
+                education: '',
+                specificRequirements: [],
+                quantityNeeded: 1,
+              }),
+            );
+            this.toaster.success({ title: 'Fiche de poste créée' });
+            this.dialogRef.close(created);
+            return undefined;
+          } catch {
+            this.toaster.error({
+              title: 'Création impossible',
+              description: 'Veuillez réessayer dans un instant.',
+            });
+            return undefined;
+          }
+        },
+        onInvalid: (field) => {
+          field().markAsTouched();
+        },
+      },
+    },
+  );
 
   protected readonly canSubmit = computed(
     () => this.profileForm().valid() && !this.profileForm().submitting(),
   );
 
   protected onSubmit(): void {
-    submit(this.profileForm, async () => {
-      const m = this.model();
-      try {
-        const created = await firstValueFrom(
-          this.profilesService.create(this.data.projectId, {
-            title: m.title.trim(),
-            experienceLevel: m.experienceLevel,
-            location: m.location.trim(),
-            requiredSkills: [...this.requiredSkills()],
-            optionalSkills: [],
-            missions: '',
-            education: '',
-            specificRequirements: [],
-            quantityNeeded: 1,
-          }),
-        );
-        this.toaster.success({ title: 'Fiche de poste créée' });
-        this.dialogRef.close(created);
-      } catch {
-        this.toaster.error({
-          title: 'Création impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        });
-      }
-    });
+    void submit(this.profileForm);
   }
 
   protected cancel(): void {

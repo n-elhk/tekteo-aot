@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, linkedSignal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { tap } from 'rxjs';
 import type { CreateAoFavoriteDto } from '@org/schemas';
 import { AoFavorite, AoItem } from './ao.model';
@@ -16,38 +17,28 @@ const API = '/api/ao-favorites';
 export class AoFavoritesService {
   private readonly http = inject(HttpClient);
 
-  private readonly _favorites = signal<ReadonlyArray<AoFavorite>>([]);
-  private readonly _loaded = signal(false);
+  private readonly favoritesResource = rxResource({
+    stream: () => this.http.get<AoFavorite[]>(API),
+    defaultValue: [],
+  });
 
-  readonly favorites = this._favorites.asReadonly();
-  readonly loaded = this._loaded.asReadonly();
+  readonly favorites = linkedSignal(() => this.favoritesResource.value());
+  readonly loaded = computed(() => this.favoritesResource.status() === 'resolved');
 
   /** Ensemble des `aoId` favoris (pour des recherches O(1)). */
   readonly favoriteIds = computed(
-    () => new Set(this._favorites().map((favorite) => favorite.aoId)),
+    () => new Set(this.favorites().map((favorite) => favorite.aoId)),
   );
 
   isFavorite(aoId: string): boolean {
     return this.favoriteIds().has(aoId);
   }
 
-  /** Charge les favoris depuis l'API si ce n'est pas déjà fait. */
-  ensureLoaded(): void {
-    if (this._loaded()) return;
-    this.http.get<AoFavorite[]>(API).subscribe({
-      next: (favorites) => {
-        this._favorites.set(favorites);
-        this._loaded.set(true);
-      },
-      error: () => this._loaded.set(true),
-    });
-  }
-
   add(ao: AoItem) {
     const dto: CreateAoFavoriteDto = { aoId: ao.id, aoData: ao };
     return this.http.post<AoFavorite>(API, dto).pipe(
       tap((favorite) => {
-        this._favorites.update((current) => [favorite, ...current]);
+        this.favorites.update((current) => [favorite, ...current]);
       }),
     );
   }
@@ -55,7 +46,7 @@ export class AoFavoritesService {
   remove(aoId: string) {
     return this.http.delete<void>(`${API}/${aoId}`).pipe(
       tap(() => {
-        this._favorites.update((current) =>
+        this.favorites.update((current) =>
           current.filter((favorite) => favorite.aoId !== aoId),
         );
       }),

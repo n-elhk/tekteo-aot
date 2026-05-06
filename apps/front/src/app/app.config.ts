@@ -1,6 +1,8 @@
 import {
   ApplicationConfig,
   LOCALE_ID,
+  inject,
+  provideAppInitializer,
   provideBrowserGlobalErrorListeners,
   provideZonelessChangeDetection,
 } from '@angular/core';
@@ -13,12 +15,11 @@ import {
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { registerLocaleData } from '@angular/common';
 import localeFr from '@angular/common/locales/fr';
-import { DialogModule } from '@angular/cdk/dialog';
-import { OverlayModule } from '@angular/cdk/overlay';
-import { importProvidersFrom } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { AuthService } from './core/auth/auth.service';
 
 // Enregistre les données de localisation française pour les pipes
 // (DatePipe, DecimalPipe, CurrencyPipe, etc.) afin qu'ils utilisent
@@ -37,6 +38,11 @@ export const appConfig: ApplicationConfig = {
       withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' }),
     ),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
-    importProvidersFrom(DialogModule, OverlayModule),
+    // Hydrate l'utilisateur courant depuis le cookie httpOnly avant le
+    // premier rendu : les guards de routes lisent un état déjà cohérent
+    // avec le serveur. Un 401 (session absente / expirée) est silencieux.
+    provideAppInitializer(() =>
+      firstValueFrom(inject(AuthService).fetchMe()).catch(() => undefined),
+    ),
   ],
 };

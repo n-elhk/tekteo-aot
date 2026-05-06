@@ -1,12 +1,11 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  InjectionToken,
   computed,
   inject,
   signal,
 } from '@angular/core';
-import { DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import {
   FormField,
   FormRoot,
@@ -16,6 +15,7 @@ import {
   minLength,
   required,
   submit,
+  validate,
 } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 import type { ExperienceLevelValue } from '@org/schemas';
@@ -128,6 +128,11 @@ const LEVELS: ReadonlyArray<{ value: ExperienceLevelValue; label: string }> = [
               [formField]="gridForm.validTo"
               class="block w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
             />
+            @if (gridForm.validTo().touched() && gridForm.validTo().errors().length > 0) {
+              <span class="text-xs font-medium text-red-600">
+                {{ gridForm.validTo().errors()[0].message }}
+              </span>
+            }
           </label>
         </div>
       </form>
@@ -147,11 +152,7 @@ const LEVELS: ReadonlyArray<{ value: ExperienceLevelValue; label: string }> = [
   `,
 })
 export class PricingGridEditDialog {
-  static readonly DATA = new InjectionToken<PricingGridEditDialogData>(
-    'PricingGridEditDialogData',
-  );
-
-  protected readonly data = inject(PricingGridEditDialog.DATA);
+  protected readonly data = inject<PricingGridEditDialogData>(DIALOG_DATA);
   private readonly dialogRef = inject(
     DialogRef<PricingGrid | null, PricingGridEditDialog>,
   );
@@ -161,46 +162,74 @@ export class PricingGridEditDialog {
   protected readonly levels = LEVELS;
   protected readonly model = signal<Model>(buildInitial(this.data));
 
-  protected readonly gridForm = form(this.model, (path) => {
-    required(path.profileTitle, { message: 'Le profil est requis' });
-    minLength(path.profileTitle, 2, { message: 'Au moins 2 caractères' });
-    maxLength(path.profileTitle, 200, { message: 'Au maximum 200 caractères' });
-    min(path.dailyRate, 1, { message: 'Le TJM doit être positif' });
-    maxLength(path.region, 120, { message: 'Au maximum 120 caractères' });
-  });
+  protected readonly gridForm = form(
+    this.model,
+    (path) => {
+      required(path.profileTitle, { message: 'Le profil est requis' });
+      minLength(path.profileTitle, 2, { message: 'Au moins 2 caractères' });
+      maxLength(path.profileTitle, 200, { message: 'Au maximum 200 caractères' });
+      validate(path.profileTitle, ({ value }) =>
+        value().length > 0 && value().trim().length === 0
+          ? { kind: 'blank', message: 'Ne peut contenir que des espaces' }
+          : undefined,
+      );
+      min(path.dailyRate, 1, { message: 'Le TJM doit être positif' });
+      maxLength(path.region, 120, { message: 'Au maximum 120 caractères' });
+      validate(path.validTo, ({ value, valueOf }) => {
+        const to = value();
+        const from = valueOf(path.validFrom);
+        return to && from && to < from
+          ? {
+              kind: 'dateRange',
+              message: 'La date de fin doit être postérieure à la date de début',
+            }
+          : undefined;
+      });
+    },
+    {
+      submission: {
+        action: async () => {
+          const m = this.model();
+          const dto = {
+            profileTitle: m.profileTitle.trim(),
+            experienceLevel: m.experienceLevel,
+            dailyRate: m.dailyRate,
+            ...(m.region.trim() ? { region: m.region.trim() } : {}),
+            ...(m.validFrom ? { validFrom: m.validFrom } : {}),
+            ...(m.validTo ? { validTo: m.validTo } : {}),
+          };
+          try {
+            const saved = await firstValueFrom(
+              this.data.grid
+                ? this.service.update(this.data.grid.id, dto)
+                : this.service.create(dto),
+            );
+            this.toaster.success({
+              title: this.data.grid ? 'Grille mise à jour' : 'Grille créée',
+            });
+            this.dialogRef.close(saved);
+            return undefined;
+          } catch {
+            this.toaster.error({
+              title: 'Action impossible',
+              description: 'Veuillez réessayer dans un instant.',
+            });
+            return undefined;
+          }
+        },
+        onInvalid: (field) => {
+          field().markAsTouched();
+        },
+      },
+    },
+  );
 
   protected readonly canSubmit = computed(
     () => this.gridForm().valid() && !this.gridForm().submitting(),
   );
 
   protected onSubmit(): void {
-    submit(this.gridForm, async () => {
-      const m = this.model();
-      const dto = {
-        profileTitle: m.profileTitle.trim(),
-        experienceLevel: m.experienceLevel,
-        dailyRate: m.dailyRate,
-        ...(m.region.trim() ? { region: m.region.trim() } : {}),
-        ...(m.validFrom ? { validFrom: m.validFrom } : {}),
-        ...(m.validTo ? { validTo: m.validTo } : {}),
-      };
-      try {
-        const saved = await firstValueFrom(
-          this.data.grid
-            ? this.service.update(this.data.grid.id, dto)
-            : this.service.create(dto),
-        );
-        this.toaster.success({
-          title: this.data.grid ? 'Grille mise à jour' : 'Grille créée',
-        });
-        this.dialogRef.close(saved);
-      } catch {
-        this.toaster.error({
-          title: 'Action impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        });
-      }
-    });
+    void submit(this.gridForm);
   }
 
   protected cancel(): void {

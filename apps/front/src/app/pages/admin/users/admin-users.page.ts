@@ -2,12 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { filter, finalize, switchMap, tap } from 'rxjs';
 import { UsersService } from '../../../core/users/users.service';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { ToastService } from '../../../core/notifications/toast.service';
-import { AppDialogService } from '../../../core/dialog/app-dialog.service';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Card } from '../../../shared/ui/card/card';
 import type { AdminUser, Role } from '../../../core/users/user-admin.model';
 
@@ -28,7 +32,7 @@ export class AdminUsersPage {
   private readonly usersService = inject(UsersService);
   private readonly authStore = inject(AuthStore);
   private readonly toaster = inject(ToastService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
 
   protected readonly roles = ROLES;
   protected readonly currentUserId = computed(() => this.authStore.user()?.id ?? null);
@@ -72,7 +76,7 @@ export class AdminUsersPage {
     });
   }
 
-  protected async deleteUser(user: AdminUser): Promise<void> {
+  protected deleteUser(user: AdminUser): void {
     if (user.id === this.currentUserId()) {
       this.toaster.warning({
         title: 'Action bloquée',
@@ -80,37 +84,34 @@ export class AdminUsersPage {
       });
       return;
     }
-    const ref = this.dialog.open<ConfirmDialog, void, boolean>(ConfirmDialog, {
-      data: undefined,
-      providers: [
-        {
-          provide: ConfirmDialog.DATA,
-          useValue: {
-            title: 'Supprimer cet utilisateur ?',
-            description: `Le compte ${user.email} sera définitivement supprimé.`,
-            confirmLabel: 'Supprimer',
-            variant: 'danger' as const,
-          },
-        },
-      ],
-    });
-    const confirmed = await firstValueFrom(ref.closed);
-    if (!confirmed) return;
-    this.busyId.set(user.id);
-    this.usersService.remove(user.id).subscribe({
-      next: () => {
-        this.busyId.set(null);
-        this.toaster.success({ title: 'Utilisateur supprimé' });
-        this.resource.reload();
-      },
-      error: (error: unknown) => {
-        this.busyId.set(null);
-        this.toaster.error({
-          title: 'Suppression impossible',
-          description: extractErrorMessage(error),
-        });
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
+      ...APP_DIALOG_CONFIG,
+      data: {
+        title: 'Supprimer cet utilisateur ?',
+        description: `Le compte ${user.email} sera définitivement supprimé.`,
+        confirmLabel: 'Supprimer',
+        variant: 'danger',
       },
     });
+
+    ref.closed
+      .pipe(
+        filter(Boolean),
+        tap(() => this.busyId.set(user.id)),
+        switchMap(() => this.usersService.remove(user.id)),
+        tap(() => {
+          this.toaster.success({ title: 'Utilisateur supprimé' });
+          this.resource.reload();
+        }),
+        finalize(() => this.busyId.set(null)),
+      )
+      .subscribe({
+        error: (error: unknown) =>
+          this.toaster.error({
+            title: 'Suppression impossible',
+            description: extractErrorMessage(error),
+          }),
+      });
   }
 
 }

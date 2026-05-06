@@ -10,19 +10,23 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { firstValueFrom } from 'rxjs';
+import { filter, switchMap, tap } from 'rxjs';
 import type { UpdateJobProfileDto } from '@org/schemas';
 import type { JobProfile, ExperienceLevel } from '../../core/job-profiles/job-profile.model';
 import { JobProfilesService } from '../../core/job-profiles/job-profiles.service';
 import { ToastService } from '../../core/notifications/toast.service';
-import { AppDialogService } from '../../core/dialog/app-dialog.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
 import { TagInput } from '../../shared/ui/tag-input/tag-input';
 import { ExperienceLevelBadge } from '../../shared/ui/experience-level-badge/experience-level-badge';
 import { SectionStatusBadge } from '../../shared/ui/section-status-badge/section-status-badge';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog';
 
 interface EditableModel {
   title: string;
@@ -66,7 +70,7 @@ const LEVELS: ReadonlyArray<{ value: ExperienceLevel; label: string }> = [
 export class JobProfileDetailPage {
   private readonly profilesService = inject(JobProfilesService);
   private readonly toaster = inject(ToastService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
   private readonly authStore = inject(AuthStore);
 
@@ -225,36 +229,35 @@ export class JobProfileDetailPage {
       });
   }
 
-  protected async confirmDelete(): Promise<void> {
+  protected confirmDelete(): void {
     const profile = this.profile();
     if (!profile) return;
-    const ref = this.dialog.open<ConfirmDialog, void, boolean>(ConfirmDialog, {
-      data: undefined,
-      providers: [
-        {
-          provide: ConfirmDialog.DATA,
-          useValue: {
-            title: 'Supprimer cette fiche ?',
-            description: `« ${profile.title} » sera définitivement supprimée.`,
-            confirmLabel: 'Supprimer',
-            variant: 'danger' as const,
-          },
-        },
-      ],
-    });
-    const confirmed = await firstValueFrom(ref.closed);
-    if (!confirmed) return;
-    this.profilesService.remove(profile.id).subscribe({
-      next: () => {
-        this.toaster.success({ title: 'Fiche supprimée' });
-        this.router.navigate(['/projects', this.id()]);
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
+      ...APP_DIALOG_CONFIG,
+      data: {
+        title: 'Supprimer cette fiche ?',
+        description: `« ${profile.title} » sera définitivement supprimée.`,
+        confirmLabel: 'Supprimer',
+        variant: 'danger',
       },
-      error: () =>
-        this.toaster.error({
-          title: 'Suppression impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        }),
     });
+
+    ref.closed
+      .pipe(
+        filter(Boolean),
+        switchMap(() => this.profilesService.remove(profile.id)),
+        tap(() => {
+          this.toaster.success({ title: 'Fiche supprimée' });
+          this.router.navigate(['/projects', this.id()]);
+        }),
+      )
+      .subscribe({
+        error: () =>
+          this.toaster.error({
+            title: 'Suppression impossible',
+            description: 'Veuillez réessayer dans un instant.',
+          }),
+      });
   }
 }
 

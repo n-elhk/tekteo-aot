@@ -1,15 +1,34 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { EMPTY, type Observable } from 'rxjs';
-import type { AoSearchQueryDto, AoItem, AoSearchResponse } from '../../core/ao/ao.model';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
+import { firstValueFrom, type Observable } from 'rxjs';
+import { EMPTY_PAGINATED_RESPONSE } from '@org/types';
+import type { AoSearchQueryDto, AoItem } from '../../core/ao/ao.model';
 import { AoService } from '../../core/ao/ao.service';
 import { AoFavoritesService } from '../../core/ao/ao-favorites.service';
 import { AoAnalyseStore } from '../../core/ao/ao-analyse.store';
 import { ToastService } from '../../core/notifications/toast.service';
+import { ProjectsSourceAoService } from '../../core/projects/projects-source-ao.service';
+import { extractTextFromFile } from '../../core/files/extract-text';
+import { truncateName } from '../../core/ao/ao-display.util';
+import { getPreviousVisit, markVisitNow } from '../../core/ao/ao-last-visit';
+import type { ProjectPrefill } from '../projects/project-new.page';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
 import { AoCard } from '../../shared/ui/ao-card/ao-card';
+import {
+  AoAnalyseModal,
+  type AoAnalyseModalData,
+  type AoAnalyseModalResult,
+} from './ao-analyse-modal';
 
 const REGIONS: ReadonlyArray<{ value: AoSearchQueryDto['region'] | ''; label: string }> = [
   { value: '', label: 'Toutes régions' },
@@ -38,9 +57,22 @@ const TYPES: ReadonlyArray<{ value: AoSearchQueryDto['typeMarche'] | ''; label: 
 
 const PROCEDURES: ReadonlyArray<{ value: AoSearchQueryDto['procedure'] | ''; label: string }> = [
   { value: '', label: 'Toutes procédures' },
-  { value: 'OUVERT', label: 'Appel d\'offres ouvert' },
+  { value: 'OUVERT', label: "Appel d'offres ouvert" },
   { value: 'NEGOCIE', label: 'Procédure négociée' },
   { value: 'MAPA', label: 'MAPA' },
+];
+
+const SUGGESTIONS: ReadonlyArray<string> = [
+  'ERP',
+  'CRM',
+  'développement',
+  'cybersécurité',
+  'cloud',
+  'infogérance',
+  'TMA',
+  'MCO',
+  'AMOA',
+  'hébergement',
 ];
 
 interface SearchParams {
@@ -67,9 +99,14 @@ const INITIAL: SearchParams = {
   page: 1,
 };
 
+type ActiveTab = 'results' | 'favoris';
+
 /**
  * Page Veille AO : recherche dans le BOAMP, filtres avancés, favoris,
- * lancement d'une analyse IA pour un AO ciblé.
+ * lancement d'une analyse IA pour un AO ciblé. Inclut un onglet « Favoris »,
+ * des suggestions de mots-clés, une création de projet pré-rempli (avec
+ * extraction de CCTP côté navigateur) et une modale de confirmation
+ * d'analyse permettant de joindre un RC extrait localement.
  */
 @Component({
   selector: 'app-ao-veille-page',
@@ -77,41 +114,68 @@ const INITIAL: SearchParams = {
   imports: [RouterLink, Card, Button, AoCard],
   templateUrl: './ao-veille.page.html',
 })
-export class AoVeillePage implements OnInit {
+export class AoVeillePage {
   private readonly aoService = inject(AoService);
   private readonly favoritesService = inject(AoFavoritesService);
+  private readonly importedService = inject(ProjectsSourceAoService);
   private readonly analyseStore = inject(AoAnalyseStore);
   private readonly toaster = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(Dialog);
 
   protected readonly regions = REGIONS;
   protected readonly types = TYPES;
   protected readonly procedures = PROCEDURES;
+  protected readonly suggestions = SUGGESTIONS;
 
   /** Filtres en cours de saisie. */
   protected readonly draft = signal<SearchParams>({ ...INITIAL });
   /** Paramètres effectivement utilisés pour la recherche. */
-  protected readonly applied = signal<SearchParams | null>(null);
+  protected readonly applied = signal<SearchParams | undefined>(undefined);
   protected readonly favoriteBusyId = signal<string | null>(null);
 
-  protected readonly resource = rxResource<AoSearchResponse | undefined, SearchParams | null>({
+  /** Onglet courant : résultats de recherche ou favoris. */
+  protected readonly activeTab = signal<ActiveTab>('results');
+
+  /** Date ISO de la précédente visite, figée au montage de la page. */
+  protected readonly previousVisit = signal<string | null>(getPreviousVisit());
+
+  /** AO dont le CCTP est en cours d'extraction (pour la carte concernée). */
+  protected readonly cctpBusyId = signal<string | null>(null);
+
+  protected readonly resource = rxResource({
     params: () => this.applied(),
-    stream: ({ params }): Observable<AoSearchResponse | undefined> =>
-      params ? this.aoService.search(toQuery(params)) : (EMPTY as Observable<undefined>),
+    stream: ({ params }) => this.aoService.search(toQuery(params)),
+    defaultValue: EMPTY_PAGINATED_RESPONSE,
   });
 
   protected readonly results = computed<ReadonlyArray<AoItem>>(
-    () => this.resource.value()?.results ?? [],
+    () => this.resource.value().items,
   );
-  protected readonly hasSearched = computed(() => this.applied() !== null);
+  protected readonly favoritesList = computed<ReadonlyArray<AoItem>>(
+    () => this.favoritesService.favorites().map((favorite) => favorite.aoData),
+  );
+  protected readonly displayList = computed<ReadonlyArray<AoItem>>(() =>
+    this.activeTab() === 'favoris' ? this.favoritesList() : this.results(),
+  );
+
+  protected readonly hasSearched = computed(() => this.applied() !== undefined);
   protected readonly isLoading = computed(() => this.resource.isLoading());
   protected readonly hasError = computed(() => this.resource.error() !== undefined);
-  protected readonly totalCount = computed(() => this.resource.value()?.totalCount ?? 0);
+  protected readonly totalCount = computed(() => this.resource.value().total);
   protected readonly currentPage = computed(() => this.applied()?.page ?? 1);
-  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalCount() / 20)));
+  protected readonly totalPages = computed(() => {
+    const response = this.resource.value();
+    if (response.pageSize === 0) return 1;
+    return Math.max(1, Math.ceil(response.total / response.pageSize));
+  });
+  protected readonly favoritesCount = computed(() => this.favoritesService.favorites().length);
 
-  ngOnInit(): void {
-    this.favoritesService.ensureLoaded();
+  constructor() {
+    // Marque l'horodatage de la visite courante immédiatement après avoir lu
+    // la précédente : les futurs renders compareront `publishedAt` à la valeur
+    // figée dans `previousVisit`.
+    markVisitNow();
   }
 
   protected updateDraft<K extends keyof SearchParams>(key: K, value: SearchParams[K]): void {
@@ -133,11 +197,27 @@ export class AoVeillePage implements OnInit {
 
   protected resetFilters(): void {
     this.draft.set({ ...INITIAL });
-    this.applied.set(null);
+    this.applied.set(undefined);
   }
 
   protected applyFilters(): void {
     this.applied.set({ ...this.draft(), page: 1 });
+    this.activeTab.set('results');
+  }
+
+  protected pickSuggestion(term: string): void {
+    this.updateDraft('q', term);
+    this.applyFilters();
+  }
+
+  protected refresh(): void {
+    if (this.applied()) {
+      this.resource.reload();
+    }
+  }
+
+  protected setActiveTab(tab: ActiveTab): void {
+    this.activeTab.set(tab);
   }
 
   protected goToPage(page: number): void {
@@ -175,8 +255,60 @@ export class AoVeillePage implements OnInit {
     return this.favoritesService.isFavorite(ao.id);
   }
 
-  protected analyse(ao: AoItem): void {
+  protected isImported(ao: AoItem): boolean {
+    return this.importedService.isImported(ao.id);
+  }
+
+  protected isNew(ao: AoItem): boolean {
+    const previous = this.previousVisit();
+    if (!previous || !ao.publishedAt) return false;
+    const publishedAt = new Date(ao.publishedAt).getTime();
+    const previousTime = new Date(previous).getTime();
+    if (Number.isNaN(publishedAt) || Number.isNaN(previousTime)) return false;
+    return publishedAt > previousTime;
+  }
+
+  protected isCctpBusy(ao: AoItem): boolean {
+    return this.cctpBusyId() === ao.id;
+  }
+
+  protected createProject(ao: AoItem): void {
+    const prefill = buildPrefill(ao);
+    this.router.navigate(['/projects/new'], { state: { prefill } });
+  }
+
+  protected handleCctpFile(event: { ao: AoItem; file: File }): void {
+    const { ao, file } = event;
+    if (this.cctpBusyId()) return;
+    this.cctpBusyId.set(ao.id);
+    extractTextFromFile(file)
+      .then((text) => {
+        this.cctpBusyId.set(null);
+        const prefill: ProjectPrefill = {
+          ...buildPrefill(ao),
+          cctpText: text,
+          cctpFilename: file.name,
+        };
+        this.router.navigate(['/projects/new'], { state: { prefill } });
+      })
+      .catch((error: unknown) => {
+        this.cctpBusyId.set(null);
+        this.toaster.error({
+          title: 'Extraction impossible',
+          description: extractErrorMessage(error),
+        });
+      });
+  }
+
+  protected async openAnalyseModal(ao: AoItem): Promise<void> {
+    const ref = this.dialog.open<AoAnalyseModalResult, AoAnalyseModalData, AoAnalyseModal>(
+      AoAnalyseModal,
+      { ...APP_DIALOG_CONFIG, data: { ao } },
+    );
+    const result = await firstValueFrom(ref.closed);
+    if (!result) return;
     this.analyseStore.select(ao);
+    this.analyseStore.setPendingRc(result.rcText);
     this.router.navigate(['/veille-ao/analyse']);
   }
 }
@@ -197,4 +329,21 @@ function toQuery(params: SearchParams): Partial<AoSearchQueryDto> {
       ? { procedure: params.procedure as AoSearchQueryDto['procedure'] }
       : {}),
   };
+}
+
+function buildPrefill(ao: AoItem): ProjectPrefill {
+  const deadline = ao.deadline ? ao.deadline.slice(0, 10) : '';
+  return {
+    name: truncateName(ao.title),
+    clientName: ao.buyer ?? '',
+    marketObject: ao.title ?? '',
+    deadline,
+    sourceAoId: ao.id,
+  };
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Une erreur inattendue est survenue.';
 }

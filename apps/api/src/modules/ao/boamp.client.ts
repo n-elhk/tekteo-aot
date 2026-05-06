@@ -5,6 +5,7 @@
  */
 import { Injectable, Logger } from '@nestjs/common';
 import type { AoItem } from '@org/schemas';
+import type { PaginatedResponse } from '@org/types';
 
 const BASE_URL =
   'https://boamp-datadila.opendatasoft.com/api/explore/v2.1/catalog/datasets/boamp/records';
@@ -49,11 +50,10 @@ export interface BoampSearchInput {
   hideAttrib: boolean;
 }
 
-export interface BoampSearchResult {
-  results: AoItem[];
-  page: number;
-  totalCount: number;
-}
+/** Page de recherche BOAMP (pagination fixée à 20 par défaut). */
+export type BoampSearchResult = PaginatedResponse<AoItem>;
+
+const BOAMP_PAGE_SIZE = 20;
 
 export interface BoampHistoryItem {
   date: string | null;
@@ -67,7 +67,7 @@ export class BoampClient {
   private readonly logger = new Logger(BoampClient.name);
 
   async search(input: BoampSearchInput): Promise<BoampSearchResult> {
-    const offset = (input.page - 1) * 20;
+    const offset = (input.page - 1) * BOAMP_PAGE_SIZE;
     const clauses = this.buildSearchClauses(input);
 
     let response = await this.fetchBoamp(clauses, offset);
@@ -93,9 +93,10 @@ export class BoampClient {
     };
 
     return {
-      results: (data.results ?? []).map(this.mapRecord),
+      items: (data.results ?? []).map(this.mapRecord),
       page: input.page,
-      totalCount: data.total_count ?? 0,
+      pageSize: BOAMP_PAGE_SIZE,
+      total: data.total_count ?? 0,
     };
   }
 
@@ -202,7 +203,7 @@ export class BoampClient {
   private fetchBoamp(clauses: string[], offset: number): Promise<Response> {
     const params = new URLSearchParams({
       where: clauses.join(' AND '),
-      limit: '20',
+      limit: String(BOAMP_PAGE_SIZE),
       offset: offset.toString(),
       order_by: 'dateparution DESC',
       select:

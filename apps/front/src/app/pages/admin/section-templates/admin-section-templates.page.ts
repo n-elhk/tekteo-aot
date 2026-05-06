@@ -1,17 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom, switchMap, tap } from 'rxjs';
 import {
   SectionTemplate,
   SectionTemplatesService,
 } from '../../../core/section-templates/section-templates.service';
-import { AppDialogService } from '../../../core/dialog/app-dialog.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
 import { ToastService } from '../../../core/notifications/toast.service';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { Card } from '../../../shared/ui/card/card';
 import { Button } from '../../../shared/ui/button/button';
-import { ConfirmDialog } from '../../../shared/ui/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../../shared/ui/confirm-dialog/confirm-dialog';
 import {
   TemplateEditDialog,
   TemplateEditDialogData,
@@ -26,7 +30,7 @@ import {
 })
 export class AdminSectionTemplatesPage {
   private readonly service = inject(SectionTemplatesService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly toaster = inject(ToastService);
   private readonly authStore = inject(AuthStore);
 
@@ -48,50 +52,44 @@ export class AdminSectionTemplatesPage {
     await this.openDialog(template);
   }
 
-  protected async deleteTemplate(template: SectionTemplate): Promise<void> {
-    const ref = this.dialog.open<ConfirmDialog, void, boolean>(ConfirmDialog, {
-      data: undefined,
-      providers: [
-        {
-          provide: ConfirmDialog.DATA,
-          useValue: {
-            title: 'Supprimer ce modèle ?',
-            description: `« ${template.name} » sera définitivement supprimé.`,
-            confirmLabel: 'Supprimer',
-            variant: 'danger' as const,
-          },
-        },
-      ],
-    });
-    const confirmed = await firstValueFrom(ref.closed);
-    if (!confirmed) return;
-    this.service.remove(template.id).subscribe({
-      next: () => {
-        this.toaster.success({ title: 'Modèle supprimé' });
-        this.resource.reload();
+  protected deleteTemplate(template: SectionTemplate): void {
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
+      ...APP_DIALOG_CONFIG,
+      data: {
+        title: 'Supprimer ce modèle ?',
+        description: `« ${template.name} » sera définitivement supprimé.`,
+        confirmLabel: 'Supprimer',
+        variant: 'danger',
       },
-      error: () =>
-        this.toaster.error({
-          title: 'Suppression impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        }),
     });
+
+    ref.closed
+      .pipe(
+        filter(Boolean),
+        switchMap(() => this.service.remove(template.id)),
+        tap(() => {
+          this.toaster.success({ title: 'Modèle supprimé' });
+          this.resource.reload();
+        }),
+      )
+      .subscribe({
+        error: () =>
+          this.toaster.error({
+            title: 'Suppression impossible',
+            description: 'Veuillez réessayer dans un instant.',
+          }),
+      });
   }
 
   private async openDialog(template: SectionTemplate | null): Promise<void> {
-    const ref = this.dialog.open<TemplateEditDialog, void, SectionTemplate | null>(
+    const ref = this.dialog.open<SectionTemplate | null, TemplateEditDialogData, TemplateEditDialog>(
       TemplateEditDialog,
       {
-        data: undefined,
-        providers: [
-          {
-            provide: TemplateEditDialog.DATA,
-            useValue: {
-              template,
-              nextOrderIndex: this.templates().length,
-            } satisfies TemplateEditDialogData,
-          },
-        ],
+        ...APP_DIALOG_CONFIG,
+        data: {
+          template,
+          nextOrderIndex: this.templates().length,
+        },
       },
     );
     const saved = await firstValueFrom(ref.closed);

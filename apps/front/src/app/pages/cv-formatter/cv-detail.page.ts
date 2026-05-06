@@ -1,8 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+} from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom, switchMap, tap } from 'rxjs';
 import { AuthStore } from '../../core/auth/auth.store';
 import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
 import type {
@@ -11,11 +17,14 @@ import type {
   CvTemplateValue,
   GeneratedCvDto,
 } from '../../core/consultant-cvs/consultant-cv.model';
-import { AppDialogService } from '../../core/dialog/app-dialog.service';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
 import { ToastService } from '../../core/notifications/toast.service';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog';
 import { GenerateCvDialog } from './generate-cv-dialog';
 import { GeneratedCvList } from './generated-cv-list';
 
@@ -50,8 +59,7 @@ export class CvDetailPage {
   private readonly cvsService = inject(ConsultantCvsService);
   private readonly authStore = inject(AuthStore);
   private readonly toaster = inject(ToastService);
-  private readonly appDialog = inject(AppDialogService);
-  private readonly cdkDialog = inject(Dialog);
+  private readonly dialog = inject(Dialog);
 
   readonly id = input.required<string>();
 
@@ -62,9 +70,13 @@ export class CvDetailPage {
     stream: ({ params }) => this.cvsService.get(params),
   });
 
-  protected readonly cv = computed<ConsultantCv | null>(() => this.resource.value() ?? null);
+  protected readonly cv = computed<ConsultantCv | null>(
+    () => this.resource.value() ?? null,
+  );
   protected readonly isLoading = computed(() => this.resource.isLoading());
-  protected readonly hasError = computed(() => this.resource.error() !== undefined);
+  protected readonly hasError = computed(
+    () => this.resource.error() !== undefined,
+  );
 
   protected readonly generatedCvs = computed<GeneratedCvDto[]>(
     () => (this.cv()?.generatedCvs as GeneratedCvDto[] | undefined) ?? [],
@@ -89,7 +101,8 @@ export class CvDetailPage {
 
   protected stringify(value: unknown): string {
     if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (typeof value === 'number' || typeof value === 'boolean')
+      return String(value);
     if (value && typeof value === 'object') {
       try {
         return JSON.stringify(value, null, 2);
@@ -127,21 +140,16 @@ export class CvDetailPage {
     const consultantId = this.cv()?.id;
     if (!consultantId) return;
 
-    const ref = this.appDialog.open<ConfirmDialog, void, boolean>(
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(
       ConfirmDialog,
       {
-        data: undefined,
-        providers: [
-          {
-            provide: ConfirmDialog.DATA,
-            useValue: {
-              title: 'Supprimer ce CV généré ?',
-              description: 'Le PDF sera définitivement supprimé.',
-              confirmLabel: 'Supprimer',
-              variant: 'danger' as const,
-            },
-          },
-        ],
+        ...APP_DIALOG_CONFIG,
+        data: {
+          title: 'Supprimer ce CV généré ?',
+          description: 'Le PDF sera définitivement supprimé.',
+          confirmLabel: 'Supprimer',
+          variant: 'danger',
+        },
       },
     );
     const confirmed = await firstValueFrom(ref.closed);
@@ -163,26 +171,32 @@ export class CvDetailPage {
   protected async openGenerateDialog(): Promise<void> {
     const consultantId = this.cv()?.id;
     if (!consultantId) return;
-    const ref = this.cdkDialog.open<CvTemplateValue | null>(GenerateCvDialog, {
+
+    const ref = this.dialog.open<CvTemplateValue | null>(GenerateCvDialog, {
       hasBackdrop: true,
     });
-    const template = await firstValueFrom(ref.closed);
-    if (!template) return;
 
-    this.cvsService.generate(consultantId, template).subscribe({
-      next: () => {
-        this.toaster.success({
-          title: 'Génération lancée',
-          description: 'Le CV est en cours de production.',
-        });
-        setTimeout(() => this.resource.reload(), 2000);
-      },
-      error: () =>
-        this.toaster.error({
-          title: 'Génération impossible',
-          description: 'Veuillez réessayer dans un instant.',
+    ref.closed
+      .pipe(
+        filter(Boolean),
+        switchMap((template) =>
+          this.cvsService.generate(consultantId, template),
+        ),
+        tap(() => {
+          this.toaster.success({
+            title: 'Génération lancée',
+            description: 'Le CV est en cours de production.',
+          });
+          this.resource.reload();
         }),
-    });
+      )
+      .subscribe({
+        error: () =>
+          this.toaster.error({
+            title: 'Génération impossible',
+            description: 'Veuillez réessayer dans un instant.',
+          }),
+      });
   }
 }
 

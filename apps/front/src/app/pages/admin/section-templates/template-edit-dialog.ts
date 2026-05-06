@@ -1,14 +1,13 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  InjectionToken,
   computed,
   effect,
   inject,
   signal,
   untracked,
 } from '@angular/core';
-import { DialogRef } from '@angular/cdk/dialog';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import {
   FormField,
   FormRoot,
@@ -17,6 +16,7 @@ import {
   minLength,
   required,
   submit,
+  validate,
 } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -112,23 +112,63 @@ export interface TemplateEditDialogData {
   `,
 })
 export class TemplateEditDialog {
-  static readonly DATA = new InjectionToken<TemplateEditDialogData>('TemplateEditDialogData');
-
-  protected readonly data = inject(TemplateEditDialog.DATA);
+  protected readonly data = inject<TemplateEditDialogData>(DIALOG_DATA);
   private readonly dialogRef = inject(DialogRef<SectionTemplate | null, TemplateEditDialog>);
   private readonly service = inject(SectionTemplatesService);
   private readonly toaster = inject(ToastService);
 
   protected readonly model = signal<Model>(buildInitial(this.data));
-  protected readonly templateForm = form(this.model, (path) => {
-    required(path.name, { message: 'Le nom est requis' });
-    minLength(path.name, 2, { message: 'Au moins 2 caractères' });
-    maxLength(path.name, 200, { message: 'Au maximum 200 caractères' });
-    required(path.promptTemplate, { message: 'Le prompt est requis' });
-    minLength(path.promptTemplate, 10, { message: 'Au moins 10 caractères' });
-    maxLength(path.promptTemplate, 8000, { message: 'Au maximum 8 000 caractères' });
-    maxLength(path.defaultContent, 8000, { message: 'Au maximum 8 000 caractères' });
-  });
+  protected readonly templateForm = form(
+    this.model,
+    (path) => {
+      required(path.name, { message: 'Le nom est requis' });
+      minLength(path.name, 2, { message: 'Au moins 2 caractères' });
+      maxLength(path.name, 200, { message: 'Au maximum 200 caractères' });
+      validate(path.name, ({ value }) =>
+        value().length > 0 && value().trim().length === 0
+          ? { kind: 'blank', message: 'Ne peut contenir que des espaces' }
+          : undefined,
+      );
+      required(path.promptTemplate, { message: 'Le prompt est requis' });
+      minLength(path.promptTemplate, 10, { message: 'Au moins 10 caractères' });
+      maxLength(path.promptTemplate, 8000, { message: 'Au maximum 8 000 caractères' });
+      maxLength(path.defaultContent, 8000, { message: 'Au maximum 8 000 caractères' });
+    },
+    {
+      submission: {
+        action: async () => {
+          const m = this.model();
+          const dto = {
+            name: m.name.trim(),
+            promptTemplate: m.promptTemplate,
+            defaultContent: m.defaultContent || undefined,
+            orderIndex: m.orderIndex,
+          };
+          try {
+            const saved = await firstValueFrom(
+              this.data.template
+                ? this.service.update(this.data.template.id, dto)
+                : this.service.create(dto),
+            );
+            this.toaster.success({
+              title: this.data.template ? 'Modèle mis à jour' : 'Modèle créé',
+            });
+            this.dialogRef.close(saved);
+            return undefined;
+          } catch {
+            this.toaster.error({
+              title: 'Action impossible',
+              description: 'Veuillez réessayer dans un instant.',
+            });
+            return undefined;
+          }
+        },
+        onInvalid: (field) => {
+          field().markAsTouched();
+        },
+      },
+    },
+  );
 
   protected readonly canSubmit = computed(
     () => this.templateForm().valid() && !this.templateForm().submitting(),
@@ -152,31 +192,7 @@ export class TemplateEditDialog {
   }
 
   protected onSubmit(): void {
-    submit(this.templateForm, async () => {
-      const m = this.model();
-      const dto = {
-        name: m.name.trim(),
-        promptTemplate: m.promptTemplate,
-        defaultContent: m.defaultContent || undefined,
-        orderIndex: m.orderIndex,
-      };
-      try {
-        const saved = await firstValueFrom(
-          this.data.template
-            ? this.service.update(this.data.template.id, dto)
-            : this.service.create(dto),
-        );
-        this.toaster.success({
-          title: this.data.template ? 'Modèle mis à jour' : 'Modèle créé',
-        });
-        this.dialogRef.close(saved);
-      } catch {
-        this.toaster.error({
-          title: 'Action impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        });
-      }
-    });
+    void submit(this.templateForm);
   }
 
   protected cancel(): void {

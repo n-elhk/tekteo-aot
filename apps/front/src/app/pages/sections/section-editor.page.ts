@@ -10,16 +10,20 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { firstValueFrom } from 'rxjs';
+import { filter, switchMap, tap } from 'rxjs';
 import type { SectionStatus } from '@org/types';
 import { SectionsService, SectionWithTemplate } from '../../core/sections/sections.service';
 import { ToastService } from '../../core/notifications/toast.service';
-import { AppDialogService } from '../../core/dialog/app-dialog.service';
+import { Dialog } from '@angular/cdk/dialog';
+import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
 import { SectionStatusBadge } from '../../shared/ui/section-status-badge/section-status-badge';
-import { ConfirmDialog } from '../../shared/ui/confirm-dialog/confirm-dialog';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog';
 import {
   ALLOWED_ATTACHMENT_TYPES,
   AttachmentTooLargeError,
@@ -41,7 +45,7 @@ import {
 export class SectionEditorPage {
   private readonly sectionsService = inject(SectionsService);
   private readonly toaster = inject(ToastService);
-  private readonly dialog = inject(AppDialogService);
+  private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
   private readonly authStore = inject(AuthStore);
 
@@ -180,36 +184,35 @@ export class SectionEditorPage {
       });
   }
 
-  protected async confirmDelete(): Promise<void> {
+  protected confirmDelete(): void {
     const section = this.loadedSection();
     if (!section) return;
-    const ref = this.dialog.open<ConfirmDialog, void, boolean>(ConfirmDialog, {
-      data: undefined,
-      providers: [
-        {
-          provide: ConfirmDialog.DATA,
-          useValue: {
-            title: 'Supprimer cette section ?',
-            description: `« ${section.title} » sera définitivement supprimée.`,
-            confirmLabel: 'Supprimer',
-            variant: 'danger' as const,
-          },
-        },
-      ],
-    });
-    const confirmed = await firstValueFrom(ref.closed);
-    if (!confirmed) return;
-    this.sectionsService.remove(section.id).subscribe({
-      next: () => {
-        this.toaster.success({ title: 'Section supprimée' });
-        this.router.navigate(['/projects', this.id()]);
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
+      ...APP_DIALOG_CONFIG,
+      data: {
+        title: 'Supprimer cette section ?',
+        description: `« ${section.title} » sera définitivement supprimée.`,
+        confirmLabel: 'Supprimer',
+        variant: 'danger',
       },
-      error: () =>
-        this.toaster.error({
-          title: 'Suppression impossible',
-          description: 'Veuillez réessayer dans un instant.',
-        }),
     });
+
+    ref.closed
+      .pipe(
+        filter(Boolean),
+        switchMap(() => this.sectionsService.remove(section.id)),
+        tap(() => {
+          this.toaster.success({ title: 'Section supprimée' });
+          this.router.navigate(['/projects', this.id()]);
+        }),
+      )
+      .subscribe({
+        error: () =>
+          this.toaster.error({
+            title: 'Suppression impossible',
+            description: 'Veuillez réessayer dans un instant.',
+          }),
+      });
   }
 }
 

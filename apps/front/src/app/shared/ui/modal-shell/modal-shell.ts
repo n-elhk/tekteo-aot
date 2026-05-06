@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, inject, input, output } from '@angu
 import { DialogRef } from '@angular/cdk/dialog';
 
 /**
- * Coquille réutilisable pour les boîtes de dialogue ouvertes via {@link AppDialogService}.
+ * Coquille réutilisable pour les boîtes de dialogue ouvertes via le `Dialog`
+ * du CDK Angular.
  *
  * Fournit en-tête, contenu projeté et pied de page accessibles. Le composant
  * parent reste maître de son contenu : il ne reçoit aucune information

@@ -5,7 +5,7 @@ import { Button } from '../../shared/ui/button/button';
 
 /**
  * Boîte de dialogue de démonstration ouverte depuis le tableau de bord.
- * Sert d'exemple d'intégration `@angular/cdk/dialog` + {@link ModalShell}.
+ * Sert d'exemple d'intégration directe `@angular/cdk/dialog` + {@link ModalShell}.
  */
 @Component({
   selector: 'app-welcome-modal',
