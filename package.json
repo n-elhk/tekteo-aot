@@ -11,7 +11,7 @@
     "prisma:generate": "prisma generate --schema=apps/api/prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=apps/api/prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema=apps/api/prisma/schema.prisma",
-    "prisma:seed": "ts-node --transpile-only apps/api/prisma/seed.ts"
+    "prisma:seed": "tsx apps/api/prisma/seed.ts"
   },
   "private": true,
   "devDependencies": {
@@ -57,8 +57,8 @@
     "prettier": "^3.8.1",
     "prisma": "^7.8.0",
     "tailwindcss": "^4.2.4",
-    "ts-node": "10.9.1",
     "tslib": "^2.3.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.40.0",
     "vitest": "^4.0.8",

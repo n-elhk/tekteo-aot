@@ -5,9 +5,8 @@ import {
   computed,
   inject,
 } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import type { DashboardOverview, ProjectStatus } from '@org/types';
+import type { ProjectStatus } from '@org/types';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
@@ -66,10 +65,7 @@ export class DashboardPage {
   protected readonly greeting = computed(() =>
     buildGreeting(this.user()?.name ?? null),
   );
-
-  protected readonly overview = rxResource<DashboardOverview, void>({
-    stream: () => this.dashboardService.getOverview(),
-  });
+  private overview = this.dashboardService.overviewRs;
 
   protected readonly isLoading = computed(() => this.overview.isLoading());
   protected readonly hasError = computed(
@@ -142,8 +138,6 @@ export class DashboardPage {
 }
 
 function buildGreeting(name: string | null): string {
-  const trimmed = name?.split(/\s+/)[0];
-  const hour = new Date().getHours();
-  const greeting = hour < 6 ? 'Bonsoir' : hour < 18 ? 'Bonjour' : 'Bonsoir';
-  return trimmed ? `${greeting}, ${trimmed} 👋` : `${greeting} 👋`;
+  const trimmed = name?.split(/\s+/)[0] ?? '';
+  return `Bonjour, ${trimmed} 👋`;
 }

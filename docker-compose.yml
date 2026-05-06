@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: tekteo-postgres
     restart: unless-stopped
     environment:
@@ -10,7 +10,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - tekteo-pg:/var/lib/postgresql/data
+      - tekteo-pg:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U tekteo -d tekteo']
       interval: 5s
@@ -18,7 +18,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: tekteo-redis
     restart: unless-stopped
     command: redis-server --save '' --appendonly no

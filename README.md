@@ -12,8 +12,8 @@ Monorepo Nx — Angular 21 (front) + NestJS (api) + PostgreSQL/Prisma + JWT cook
 | Frontend | Angular 21 (zoneless, signals, signal-forms, rxResource) |
 | Styling | TailwindCSS v4 (CSS uniquement) |
 | Backend | NestJS 11 |
-| Base de données | PostgreSQL 17 |
-| ORM | Prisma 6 |
+| Base de données | PostgreSQL 18 |
+| ORM | Prisma 7 |
 | Validation | Zod v4 (pipe NestJS + schémas partagés) |
 | Auth | JWT (access + refresh) en cookies HTTP-only — sans Passport |
 | IA | Anthropic Claude (extraction & génération via `@anthropic-ai/sdk`) |
@@ -34,7 +34,7 @@ libs/
 ## Prérequis
 
 - Node 20+
-- PostgreSQL 17 et Redis 7 accessibles localement
+- PostgreSQL 18 et Redis 8 accessibles localement
 - npm (le projet n'utilise pas pnpm)
 - Une clé API Anthropic (`ANTHROPIC_API_KEY`) pour activer les fonctionnalités IA
 
