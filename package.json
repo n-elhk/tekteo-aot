@@ -32,7 +32,6 @@
     "@nx/node": "22.7.1",
     "@nx/web": "22.7.1",
     "@nx/webpack": "22.7.1",
-    "@oxc-project/runtime": "^0.115.0",
     "@schematics/angular": "~21.2.0",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
@@ -93,15 +92,12 @@
     "bcrypt": "^6.0.0",
     "bullmq": "^5.76.5",
     "cookie-parser": "^1.4.7",
-    "docx": "^9.6.1",
-    "fflate": "^0.8.2",
     "file-saver": "^2.0.5",
     "mammoth": "^1.12.0",
     "pdfjs-dist": "^5.7.284",
     "puppeteer": "^24.42.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "~7.8.0",
-    "xlsx": "^0.18.5",
     "zod": "^4.4.1"
   }
 }
