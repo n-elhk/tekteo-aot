@@ -59,28 +59,32 @@
     <!-- Sections du CV -->
     @for (section of sections(); track section.key) {
       <app-card [title]="section.label">
-        <ul class="space-y-3">
-          @for (item of section.items; track $index) {
-            <li class="rounded-xl border border-surface-200/70 bg-white px-4 py-3">
-              @if (isObject(item)) {
-                <dl class="grid gap-2 sm:grid-cols-2">
-                  @for (entry of entries(item); track entry[0]) {
-                    <div [class.sm:col-span-2]="entry[0].length > 12">
-                      <dt class="text-xs font-semibold uppercase tracking-wider text-surface-900/50">
-                        {{ entry[0] }}
-                      </dt>
-                      <dd class="mt-0.5 whitespace-pre-line text-sm text-surface-900/90">
-                        {{ stringify(entry[1]) }}
-                      </dd>
-                    </div>
-                  }
-                </dl>
-              } @else {
-                <p class="text-sm text-surface-900/90">{{ stringify(item) }}</p>
+        @switch (section.key) {
+          @case ('experiences') {
+            <div class="space-y-4">
+              @for (exp of asExperiences(section.items); track $index) {
+                <app-cv-experience-card [experience]="exp" />
               }
-            </li>
+            </div>
           }
-        </ul>
+          @case ('skills') {
+            <app-cv-skills-list [skills]="asSkills(section.items)" />
+          }
+          @case ('tools') {
+            <app-cv-tools-list [tools]="asTools(section.items)" />
+          }
+          @case ('languages') {
+            <app-cv-languages-list [languages]="asLanguages(section.items)" />
+          }
+          @case ('certifications') {
+            <app-cv-certifications-list
+              [certifications]="asCertifications(section.items)"
+            />
+          }
+          @case ('education') {
+            <app-cv-education-list [education]="asEducation(section.items)" />
+          }
+        }
       </app-card>
     }
 
@@ -109,7 +113,7 @@
         [cvs]="generatedCvs()"
         [canEdit]="canEdit()"
         (download)="onDownloadGenerated($event)"
-        (regenerate)="onRegenerateGenerated($event)"
+        (regenerate)="onRegenerateGenerated()"
         (remove)="onRemoveGenerated($event)"
       />
     </app-card>

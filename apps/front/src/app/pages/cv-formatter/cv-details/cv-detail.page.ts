@@ -9,32 +9,56 @@ import { Dialog } from '@angular/cdk/dialog';
 import { RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { filter, firstValueFrom, switchMap, tap } from 'rxjs';
-import { AuthStore } from '../../core/auth/auth.store';
-import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
+
+import type {
+  CvCertification,
+  CvData,
+  CvEducation,
+  CvExperience,
+  CvLanguage,
+  CvSkill,
+  CvTemplateValue,
+  GeneratedCvDto,
+} from '@org/schemas';
+
+import { AuthStore } from '../../../core/auth/auth.store';
 import type {
   ConsultantCv,
   CvIdentity,
-  CvTemplateValue,
-  GeneratedCvDto,
-} from '../../core/consultant-cvs/consultant-cv.model';
-import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
-import { ToastService } from '../../core/notifications/toast.service';
-import { Card } from '../../shared/ui/card/card';
-import { Button } from '../../shared/ui/button/button';
+} from '../../../core/consultant-cvs/consultant-cv.model';
+import { ConsultantCvsService } from '../../../core/consultant-cvs/consultant-cvs.service';
+import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
+import { ToastService } from '../../../core/notifications/toast.service';
+import { Button } from '../../../shared/ui/button/button';
+import { Card } from '../../../shared/ui/card/card';
 import {
-  ConfirmDialog,
   type ConfirmDialogData,
-} from '../../shared/ui/confirm-dialog/confirm-dialog';
-import { GenerateCvDialog } from './generate-cv-dialog';
-import { GeneratedCvList } from './generated-cv-list';
+  ConfirmDialog,
+} from '../../../shared/ui/confirm-dialog/confirm-dialog';
+import { GenerateCvDialog } from '../generate-cv-dialog';
+import { GeneratedCvList } from '../generated-cv-list';
+import { CvCertificationsList } from './section-list/cv-certifications-list';
+import { CvEducationList } from './section-list/cv-education-list';
+import { CvExperienceCard } from './section-list/cv-experience-card';
+import { CvLanguagesList } from './section-list/cv-languages-list';
+import { CvSkillsList } from './section-list/cv-skills-list';
+import { CvToolsList } from './section-list/cv-tools-list';
+
+type CvSectionKey =
+  | 'skills'
+  | 'tools'
+  | 'languages'
+  | 'certifications'
+  | 'education'
+  | 'experiences';
 
 interface CvSection {
-  readonly key: string;
+  readonly key: CvSectionKey;
   readonly label: string;
-  readonly items: ReadonlyArray<unknown>;
+  readonly items: NonNullable<CvData[CvSectionKey]>;
 }
 
-const KNOWN_SECTIONS: ReadonlyArray<{ key: string; label: string }> = [
+const KNOWN_SECTIONS: ReadonlyArray<{ key: CvSectionKey; label: string }> = [
   { key: 'experiences', label: 'Expériences professionnelles' },
   { key: 'skills', label: 'Compétences' },
   { key: 'tools', label: 'Outils & technologies' },
@@ -52,7 +76,18 @@ const KNOWN_SECTIONS: ReadonlyArray<{ key: string; label: string }> = [
 @Component({
   selector: 'app-cv-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Card, Button, GeneratedCvList],
+  imports: [
+    RouterLink,
+    Card,
+    Button,
+    GeneratedCvList,
+    CvExperienceCard,
+    CvSkillsList,
+    CvToolsList,
+    CvLanguagesList,
+    CvCertificationsList,
+    CvEducationList,
+  ],
   templateUrl: './cv-detail.page.html',
 })
 export class CvDetailPage {
@@ -91,25 +126,58 @@ export class CvDetailPage {
 
   protected readonly sections = computed<CvSection[]>(() => {
     const data = this.cv()?.cvData;
-    if (!data || typeof data !== 'object') return [];
+    if (!data) return [];
     return KNOWN_SECTIONS.map((meta) => {
-      const raw = (data as Record<string, unknown>)[meta.key];
-      const items = Array.isArray(raw) ? raw : [];
+      const raw = data[meta.key];
+      const items: NonNullable<CvData[CvSectionKey]> = Array.isArray(raw)
+        ? raw
+        : [];
       return { key: meta.key, label: meta.label, items };
     }).filter((section) => section.items.length > 0);
   });
+
+  protected asExperiences(
+    items: ReadonlyArray<unknown>,
+  ): ReadonlyArray<CvExperience> {
+    return items as ReadonlyArray<CvExperience>;
+  }
+
+  protected asSkills(items: ReadonlyArray<unknown>): ReadonlyArray<CvSkill> {
+    return items as ReadonlyArray<CvSkill>;
+  }
+
+  protected asTools(items: ReadonlyArray<unknown>): ReadonlyArray<string> {
+    return items as ReadonlyArray<string>;
+  }
+
+  protected asLanguages(
+    items: ReadonlyArray<unknown>,
+  ): ReadonlyArray<CvLanguage> {
+    return items as ReadonlyArray<CvLanguage>;
+  }
+
+  protected asCertifications(
+    items: ReadonlyArray<unknown>,
+  ): ReadonlyArray<CvCertification> {
+    return items as ReadonlyArray<CvCertification>;
+  }
+
+  protected asEducation(
+    items: ReadonlyArray<unknown>,
+  ): ReadonlyArray<CvEducation> {
+    return items as ReadonlyArray<CvEducation>;
+  }
 
   protected stringify(value: unknown): string {
     if (typeof value === 'string') return value;
     if (typeof value === 'number' || typeof value === 'boolean')
       return String(value);
-    if (value && typeof value === 'object') {
-      try {
-        return JSON.stringify(value, null, 2);
-      } catch {
-        return '[objet]';
-      }
-    }
+    if (Array.isArray(value))
+      return value.map((v) => this.stringify(v)).join('\n');
+    if (value && typeof value === 'object')
+      return Object.entries(value)
+        .map(([k, v]) => `${k} : ${this.stringify(v)}`)
+        .join('\n');
     return '';
   }
 
@@ -132,7 +200,7 @@ export class CvDetailPage {
     window.open(this.cvsService.buildDownloadUrl(id, gen.id), '_blank');
   }
 
-  protected onRegenerateGenerated(_gen: GeneratedCvDto): void {
+  protected onRegenerateGenerated(): void {
     void this.openGenerateDialog();
   }
 

@@ -19,10 +19,10 @@ import {
   validate,
 } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
-import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
-import type { CreateConsultantCvDto } from '../../core/consultant-cvs/consultant-cv.model';
-import { ToastService } from '../../core/notifications/toast.service';
-import { Button } from '../../shared/ui/button/button';
+import type { CreateConsultantCvDto } from '../../../core/consultant-cvs/consultant-cv.model';
+import { ConsultantCvsService } from '../../../core/consultant-cvs/consultant-cvs.service';
+import { ToastService } from '../../../core/notifications/toast.service';
+import { Button } from '../../../shared/ui/button/button';
 
 interface ExperienceEntry {
   role: string;
@@ -148,7 +148,9 @@ export class ConsultantManualForm {
         maxLength(exp.company, 200, { message: 'Au maximum 200 caractères' });
         maxLength(exp.dateStart, 50, { message: 'Au maximum 50 caractères' });
         maxLength(exp.dateEnd, 50, { message: 'Au maximum 50 caractères' });
-        maxLength(exp.mission, 4000, { message: 'Au maximum 4 000 caractères' });
+        maxLength(exp.mission, 4000, {
+          message: 'Au maximum 4 000 caractères',
+        });
       });
     },
     {

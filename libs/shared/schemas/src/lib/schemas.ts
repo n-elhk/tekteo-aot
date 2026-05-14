@@ -315,21 +315,82 @@ export type UpdateDocumentDto = z.infer<typeof updateDocumentSchema>;
 // ConsultantCv schemas
 // ============================================================
 
-// Le contenu structuré du CV (JSON libre mais avec une forme typique).
-// On reste permissif côté validation : Claude génère le contenu, et l'éditeur
-// peut ajuster les sections librement. Seul le squelette racine est vérifié.
+const cvIdentitySchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  initials: z.string().optional(),
+  role: z.string().optional(),
+  subtitle: z.string().optional(),
+  summary: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  location: z.string().optional(),
+  linkedin: z.string().optional(),
+});
+
+const cvSkillSchema = z.object({
+  name: z.string(),
+  level: z.number().optional(),
+});
+
+const cvLanguageSchema = z.object({
+  name: z.string(),
+  levelLabel: z.string().optional(),
+  dots: z.number().optional(),
+});
+
+const cvCertificationSchema = z.object({
+  name: z.string(),
+  year: z.string().optional(),
+});
+
+const cvEducationSchema = z.object({
+  degree: z.string().optional(),
+  year: z.string().optional(),
+  school: z.string().optional(),
+});
+
+const cvExperienceContextSchema = z.object({
+  team: z.string().optional(),
+  methodology: z.string().optional(),
+  role: z.string().optional(),
+  extraLabel: z.string().optional(),
+  extraValue: z.string().optional(),
+});
+
+const cvExperienceSchema = z.object({
+  role: z.string().optional(),
+  company: z.string().optional(),
+  clientMeta: z.string().optional(),
+  dateStart: z.string().optional(),
+  dateEnd: z.string().optional(),
+  duration: z.string().optional(),
+  location: z.string().optional(),
+  context: cvExperienceContextSchema.optional(),
+  mission: z.string().optional(),
+  activities: z.array(z.object({ bold: z.string().optional(), text: z.string().optional() })).optional(),
+  results: z.array(z.object({ value: z.string().optional(), label: z.string().optional() })).optional(),
+  tech: z.array(z.object({ category: z.string().optional(), items: z.string().optional() })).optional(),
+});
+
 export const cvDataSchema = z
   .object({
-    identity: z.record(z.string(), z.unknown()).optional(),
-    skills: z.array(z.unknown()).optional(),
-    tools: z.array(z.unknown()).optional(),
-    languages: z.array(z.unknown()).optional(),
-    certifications: z.array(z.unknown()).optional(),
-    education: z.array(z.unknown()).optional(),
-    experiences: z.array(z.unknown()).optional(),
+    identity: cvIdentitySchema.optional(),
+    skills: z.array(cvSkillSchema).optional(),
+    tools: z.array(z.string()).optional(),
+    languages: z.array(cvLanguageSchema).optional(),
+    certifications: z.array(cvCertificationSchema).optional(),
+    education: z.array(cvEducationSchema).optional(),
+    experiences: z.array(cvExperienceSchema).optional(),
   })
   .catchall(z.unknown());
 export type CvData = z.infer<typeof cvDataSchema>;
+export type CvIdentityData = z.infer<typeof cvIdentitySchema>;
+export type CvSkill = z.infer<typeof cvSkillSchema>;
+export type CvLanguage = z.infer<typeof cvLanguageSchema>;
+export type CvCertification = z.infer<typeof cvCertificationSchema>;
+export type CvEducation = z.infer<typeof cvEducationSchema>;
+export type CvExperience = z.infer<typeof cvExperienceSchema>;
 
 export const createConsultantCvSchema = z.object({
   cvData: cvDataSchema,
