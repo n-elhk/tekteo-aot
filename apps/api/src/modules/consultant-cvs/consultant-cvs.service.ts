@@ -51,6 +51,11 @@ export class ConsultantCvsService {
               template: true,
               status: true,
               updatedAt: true,
+              jobs: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { id: true },
+              },
             },
           },
         },
@@ -59,11 +64,22 @@ export class ConsultantCvsService {
     ]);
 
     return {
-      items: items.map((c) => ({
-        ...c,
-        latestGeneratedCv: c.generatedCvs[0] ?? null,
-        generatedCvs: undefined,
-      })),
+      items: items.map((c) => {
+        const latestRaw = c.generatedCvs[0] ?? null;
+        return {
+          ...c,
+          latestGeneratedCv: latestRaw
+            ? {
+                id: latestRaw.id,
+                template: latestRaw.template,
+                status: latestRaw.status,
+                updatedAt: latestRaw.updatedAt,
+                jobId: latestRaw.jobs[0]?.id ?? null,
+              }
+            : null,
+          generatedCvs: undefined,
+        };
+      }),
       total,
       page,
       pageSize,

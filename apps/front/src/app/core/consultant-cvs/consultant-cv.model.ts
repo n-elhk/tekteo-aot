@@ -43,6 +43,7 @@ export interface LatestGeneratedCv {
   readonly template: CvTemplateValue;
   readonly status: CvGenerationStatusValue;
   readonly updatedAt: string;
+  readonly jobId?: string | null;
 }
 
 /** Profil consultant tel que renvoyé par l'API. */

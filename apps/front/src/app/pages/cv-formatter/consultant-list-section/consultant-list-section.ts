@@ -7,10 +7,10 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { rxResource, takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { Dialog } from '@angular/cdk/dialog';
-import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { filter, switchMap, tap } from 'rxjs';
+import { EMPTY, filter, merge, switchMap, tap } from 'rxjs';
 import { EMPTY_PAGINATED_RESPONSE } from '@org/types';
 import { ConsultantCvsService } from '../../../core/consultant-cvs/consultant-cvs.service';
 import type {
@@ -81,6 +81,33 @@ export class ConsultantListSection {
   protected readonly listError = computed(
     () => this.resource.error() !== undefined,
   );
+
+  constructor() {
+    toObservable(this.cvs)
+      .pipe(
+        switchMap((cvs) => {
+          const jobIds = cvs
+            .filter(
+              (cv) =>
+                cv.latestGeneratedCv?.status === 'pending' ||
+                cv.latestGeneratedCv?.status === 'processing',
+            )
+            .map((cv) => cv.latestGeneratedCv?.jobId)
+            .filter((id): id is string => !!id);
+
+          if (jobIds.length === 0) return EMPTY;
+
+          return merge(
+            ...jobIds.map((id) => this.cvsService.watchImportJob(id)),
+          );
+        }),
+        filter(
+          (event) => event.status === 'done' || event.status === 'failed',
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.resource.reload());
+  }
 
   /** Recharge la liste — appelé par le parent après un import/création. */
   reload(): void {
