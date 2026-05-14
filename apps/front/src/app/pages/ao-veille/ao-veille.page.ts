@@ -5,13 +5,17 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Dialog } from '@angular/cdk/dialog';
 import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
-import { firstValueFrom, type Observable } from 'rxjs';
+import { finalize, firstValueFrom, Observable, tap } from 'rxjs';
 import { EMPTY_PAGINATED_RESPONSE } from '@org/types';
-import type { AoSearchQueryDto, AoItem } from '../../core/ao/ao.model';
+import type {
+  AoSearchQueryDto,
+  AoItem,
+  AoFavorite,
+} from '../../core/ao/ao.model';
 import { AoService } from '../../core/ao/ao.service';
 import { AoFavoritesService } from '../../core/ao/ao-favorites.service';
 import { AoAnalyseStore } from '../../core/ao/ao-analyse.store';
@@ -22,8 +26,13 @@ import { truncateName } from '../../core/ao/ao-display.util';
 import { getPreviousVisit, markVisitNow } from '../../core/ao/ao-last-visit';
 import type { ProjectPrefill } from '../projects/project-new.page';
 import { Card } from '../../shared/ui/card/card';
-import { AoCard } from '../../shared/ui/ao-card/ao-card';
-import { AoSearchFilters, type SearchFilterParams } from './ao-search-filters/ao-search-filters';
+import {
+  AoSearchFilters,
+  type SearchFilterParams,
+} from './ao-search-filters/ao-search-filters';
+import { AoVeilleResultsList } from './ao-veille-results-list/ao-veille-results-list';
+import { AoVeilleFavoritesList } from './ao-veille-favorites-list/ao-veille-favorites-list';
+import type { AoListItem } from './ao-list-item.model';
 import {
   AoAnalyseModal,
   type AoAnalyseModalData,
@@ -46,7 +55,7 @@ type ActiveTab = 'results' | 'favoris';
 @Component({
   selector: 'app-ao-veille-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Card, AoCard, AoSearchFilters],
+  imports: [Card, AoSearchFilters, AoVeilleResultsList, AoVeilleFavoritesList],
   templateUrl: './ao-veille.page.html',
 })
 export class AoVeillePage {
@@ -82,8 +91,12 @@ export class AoVeillePage {
   protected readonly favoritesList = computed<ReadonlyArray<AoItem>>(() =>
     this.favoritesService.favorites().map((favorite) => favorite.aoData),
   );
-  protected readonly displayList = computed<ReadonlyArray<AoItem>>(() =>
-    this.activeTab() === 'favoris' ? this.favoritesList() : this.results(),
+
+  protected readonly resultItems = computed<ReadonlyArray<AoListItem>>(() =>
+    this.results().map((ao) => this.toListItem(ao)),
+  );
+  protected readonly favoriteItems = computed<ReadonlyArray<AoListItem>>(() =>
+    this.favoritesList().map((ao) => this.toListItem(ao)),
   );
 
   protected readonly hasSearched = computed(() => this.applied() !== undefined);
@@ -128,58 +141,71 @@ export class AoVeillePage {
     this.activeTab.set(tab);
   }
 
-  protected goToPage(page: number): void {
-    if (page < 1 || page > this.totalPages()) return;
+  protected onPageChanged(page: number): void {
     const current = this.applied();
     if (!current) return;
     this.applied.set({ ...current, page });
   }
 
+  private toListItem(ao: AoItem): AoListItem {
+    return {
+      ao,
+      isFavorite: this.favoritesService.isFavorite(ao.id),
+      isImported: this.importedService.isImported(ao.id),
+      isNew: this.isNew(ao),
+      cctpBusy: this.cctpBusyId() === ao.id,
+    };
+  }
+
+  toggleFavoriteRequest(ao: AoItem) {
+    const isCurrentlyFavorite = this.favoritesService.isFavorite(ao.id);
+
+    if (isCurrentlyFavorite) {
+      return this.favoritesService.remove(ao.id).pipe(
+        tap(() => {
+          this.toaster.success({
+            title: 'Retiré des favoris',
+          });
+        }),
+      );
+    }
+
+    return this.favoritesService.add(ao).pipe(
+      tap(() => {
+        this.toaster.success({
+          title: 'Ajouté aux favoris',
+        });
+      }),
+    );
+  }
+
   protected toggleFavorite(ao: AoItem): void {
     if (this.favoriteBusyId() === ao.id) return;
-    const isCurrentlyFavorite = this.favoritesService.isFavorite(ao.id);
-    this.favoriteBusyId.set(ao.id);
-    const request$: Observable<unknown> = isCurrentlyFavorite
-      ? this.favoritesService.remove(ao.id)
-      : this.favoritesService.add(ao);
-    request$.subscribe({
-      next: () => {
-        this.favoriteBusyId.set(null);
-        this.toaster.success({
-          title: isCurrentlyFavorite
-            ? 'Retiré des favoris'
-            : 'Ajouté aux favoris',
-        });
-      },
+
+    const request$: Observable<void | AoFavorite> =
+      this.toggleFavoriteRequest(ao);
+
+    const observer = {
       error: () => {
-        this.favoriteBusyId.set(null);
         this.toaster.error({
           title: 'Action impossible',
           description: 'Veuillez réessayer dans un instant.',
         });
       },
-    });
+    };
+
+    request$
+      .pipe(finalize(() => this.favoriteBusyId.set(null)))
+      .subscribe(observer);
   }
 
-  protected isFavorite(ao: AoItem): boolean {
-    return this.favoritesService.isFavorite(ao.id);
-  }
-
-  protected isImported(ao: AoItem): boolean {
-    return this.importedService.isImported(ao.id);
-  }
-
-  protected isNew(ao: AoItem): boolean {
+  private isNew(ao: AoItem): boolean {
     const previous = this.previousVisit();
     if (!previous || !ao.publishedAt) return false;
     const publishedAt = new Date(ao.publishedAt).getTime();
     const previousTime = new Date(previous).getTime();
     if (Number.isNaN(publishedAt) || Number.isNaN(previousTime)) return false;
     return publishedAt > previousTime;
-  }
-
-  protected isCctpBusy(ao: AoItem): boolean {
-    return this.cctpBusyId() === ao.id;
   }
 
   protected createProject(ao: AoItem): void {
