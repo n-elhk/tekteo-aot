@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import {
   AoAnalysisResult,
   AoBoampHistoryEntry,
-  AoItem,
   AoRecommendation,
   AoSignalLevel,
 } from '../../core/ao/ao.model';
@@ -65,7 +65,7 @@ const BOAMP_OBJET_MAX_LENGTH = 80;
 @Component({
   selector: 'app-ao-analyse-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Card, Button],
+  imports: [RouterLink, Card, Button, DatePipe],
   templateUrl: './ao-analyse.page.html',
 })
 export class AoAnalysePage implements OnInit {
@@ -118,11 +118,6 @@ export class AoAnalysePage implements OnInit {
     return `${n} marché${n > 1 ? 's' : ''} attribué${n > 1 ? 's' : ''}`;
   });
 
-  /** Date de publication formatée pour l'en-tête, ou `null` si absente. */
-  protected readonly formattedPublishedAt = computed<string | null>(() => {
-    const ao = this.ao();
-    return ao ? this.formatDate(ao.publishedAt) : null;
-  });
 
   protected onRcChange(value: string): void {
     this.rcText.set(value);
@@ -200,34 +195,7 @@ export class AoAnalysePage implements OnInit {
     return SIGNAL_CLASSES[level];
   }
 
-  /**
-   * Formate une date ISO (`YYYY-MM-DD` ou ISO complet) au format français long.
-   * Renvoie `null` pour les valeurs absentes, et la chaîne d'origine si
-   * la date n'est pas analysable.
-   */
-  protected formatDate(value: string | null | undefined): string | null {
-    if (!value) return null;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-  }
 
-  /**
-   * Convertit un score sur 10 (échelle backend) en pourcentage 0–100
-   * pour la barre de progression. Clampé pour éviter tout dépassement.
-   */
-  protected scorePercent(score: number | null): number {
-    if (score === null) return 0;
-    return Math.max(0, Math.min(100, Math.round(score * 10)));
-  }
-
-  protected formattedAo(): AoItem | null {
-    return this.ao();
-  }
 }
 
 function toBoampRow(entry: AoBoampHistoryEntry): BoampRow {

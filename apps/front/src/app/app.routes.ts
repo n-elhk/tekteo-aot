@@ -98,7 +98,7 @@ export const appRoutes: Route[] = [
         path: 'cv/:id',
         title: 'CV consultant · Tekteo',
         loadComponent: () =>
-          import('./pages/cv-formatter/cv-detail.page').then((m) => m.CvDetailPage),
+          import('./pages/cv-formatter/cv-details/cv-detail.page').then((m) => m.CvDetailPage),
       },
       {
         path: 'admin',

@@ -25,7 +25,7 @@
         </a>
       </div>
     </app-card>
-  } @else if (formattedAo(); as ao) {
+  } @else if (ao(); as ao) {
     <!-- En-tête AO -->
     <app-card>
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -48,13 +48,13 @@
             Créer un projet AO
           </app-button>
           <dl class="flex flex-wrap gap-4 text-xs lg:justify-end">
-            @if (formatDate(ao.deadline); as deadline) {
+            @if (ao.deadline | date:'d MMMM yyyy'; as deadline) {
               <div>
                 <dt class="font-medium text-surface-900/50">Date limite</dt>
                 <dd class="font-semibold text-surface-900">{{ deadline }}</dd>
               </div>
             }
-            @if (formattedPublishedAt(); as publishedAt) {
+            @if (ao.publishedAt | date:'d MMMM yyyy'; as publishedAt) {
               <div>
                 <dt class="font-medium text-surface-900/50">Publié le</dt>
                 <dd class="font-semibold text-surface-900">{{ publishedAt }}</dd>
@@ -176,7 +176,7 @@
           <div class="mt-4 h-2 w-full overflow-hidden rounded-full bg-surface-100" role="progressbar" [attr.aria-valuenow]="analysis.score" aria-valuemin="0" aria-valuemax="10">
             <div
               class="h-full rounded-full bg-gradient-to-r from-brand-500 to-accent-500 transition-all duration-700"
-              [style.width.%]="scorePercent(analysis.score)"
+              [style.width.%]="analysis.score * 10"
             ></div>
           </div>
         }

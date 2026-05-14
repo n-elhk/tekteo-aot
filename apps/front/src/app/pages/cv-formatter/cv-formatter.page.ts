@@ -7,9 +7,9 @@ import {
 } from '@angular/core';
 import { AuthStore } from '../../core/auth/auth.store';
 import { Card } from '../../shared/ui/card/card';
-import { ConsultantManualForm } from './consultant-manual-form';
 import { CvImportSection } from './cv-import-section/cv-import-section';
 import { ConsultantListSection } from './consultant-list-section/consultant-list-section';
+import { ConsultantManualForm } from './consultant-manual-form/consultant-manual-form';
 
 type Tab = 'import' | 'manual';
 
