@@ -22,82 +22,17 @@ import { truncateName } from '../../core/ao/ao-display.util';
 import { getPreviousVisit, markVisitNow } from '../../core/ao/ao-last-visit';
 import type { ProjectPrefill } from '../projects/project-new.page';
 import { Card } from '../../shared/ui/card/card';
-import { Button } from '../../shared/ui/button/button';
 import { AoCard } from '../../shared/ui/ao-card/ao-card';
+import { AoSearchFilters, type SearchFilterParams } from './ao-search-filters/ao-search-filters';
 import {
   AoAnalyseModal,
   type AoAnalyseModalData,
   type AoAnalyseModalResult,
 } from './ao-analyse-modal';
 
-const REGIONS: ReadonlyArray<{ value: AoSearchQueryDto['region'] | ''; label: string }> = [
-  { value: '', label: 'Toutes régions' },
-  { value: 'IDF', label: 'Île-de-France' },
-  { value: 'ARA', label: 'Auvergne-Rhône-Alpes' },
-  { value: 'BFC', label: 'Bourgogne-Franche-Comté' },
-  { value: 'BRE', label: 'Bretagne' },
-  { value: 'CVL', label: 'Centre-Val de Loire' },
-  { value: 'COR', label: 'Corse' },
-  { value: 'GES', label: 'Grand Est' },
-  { value: 'HDF', label: 'Hauts-de-France' },
-  { value: 'NOR', label: 'Normandie' },
-  { value: 'NAQ', label: 'Nouvelle-Aquitaine' },
-  { value: 'OCC', label: 'Occitanie' },
-  { value: 'PDL', label: 'Pays de la Loire' },
-  { value: 'PAC', label: "Provence-Alpes-Côte d'Azur" },
-  { value: 'DOM', label: 'DOM-TOM' },
-];
-
-const TYPES: ReadonlyArray<{ value: AoSearchQueryDto['typeMarche'] | ''; label: string }> = [
-  { value: '', label: 'Tous les types' },
-  { value: 'SERVICES', label: 'Services' },
-  { value: 'FOURNITURES', label: 'Fournitures' },
-  { value: 'TRAVAUX', label: 'Travaux' },
-];
-
-const PROCEDURES: ReadonlyArray<{ value: AoSearchQueryDto['procedure'] | ''; label: string }> = [
-  { value: '', label: 'Toutes procédures' },
-  { value: 'OUVERT', label: "Appel d'offres ouvert" },
-  { value: 'NEGOCIE', label: 'Procédure négociée' },
-  { value: 'MAPA', label: 'MAPA' },
-];
-
-const SUGGESTIONS: ReadonlyArray<string> = [
-  'ERP',
-  'CRM',
-  'développement',
-  'cybersécurité',
-  'cloud',
-  'infogérance',
-  'TMA',
-  'MCO',
-  'AMOA',
-  'hébergement',
-];
-
-interface SearchParams {
-  q: string;
-  exclude: string;
-  region: string;
-  typeMarche: string;
-  procedure: string;
-  deadlineDays: number;
-  hidePast: boolean;
-  hideAttrib: boolean;
+interface SearchParams extends SearchFilterParams {
   page: number;
 }
-
-const INITIAL: SearchParams = {
-  q: '',
-  exclude: '',
-  region: '',
-  typeMarche: '',
-  procedure: '',
-  deadlineDays: 0,
-  hidePast: true,
-  hideAttrib: true,
-  page: 1,
-};
 
 type ActiveTab = 'results' | 'favoris';
 
@@ -111,7 +46,7 @@ type ActiveTab = 'results' | 'favoris';
 @Component({
   selector: 'app-ao-veille-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Card, Button, AoCard],
+  imports: [RouterLink, Card, AoCard, AoSearchFilters],
   templateUrl: './ao-veille.page.html',
 })
 export class AoVeillePage {
@@ -123,14 +58,6 @@ export class AoVeillePage {
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
 
-  protected readonly regions = REGIONS;
-  protected readonly types = TYPES;
-  protected readonly procedures = PROCEDURES;
-  protected readonly suggestions = SUGGESTIONS;
-
-  /** Filtres en cours de saisie. */
-  protected readonly draft = signal<SearchParams>({ ...INITIAL });
-  /** Paramètres effectivement utilisés pour la recherche. */
   protected readonly applied = signal<SearchParams | undefined>(undefined);
   protected readonly favoriteBusyId = signal<string | null>(null);
 
@@ -152,8 +79,8 @@ export class AoVeillePage {
   protected readonly results = computed<ReadonlyArray<AoItem>>(
     () => this.resource.value().items,
   );
-  protected readonly favoritesList = computed<ReadonlyArray<AoItem>>(
-    () => this.favoritesService.favorites().map((favorite) => favorite.aoData),
+  protected readonly favoritesList = computed<ReadonlyArray<AoItem>>(() =>
+    this.favoritesService.favorites().map((favorite) => favorite.aoData),
   );
   protected readonly displayList = computed<ReadonlyArray<AoItem>>(() =>
     this.activeTab() === 'favoris' ? this.favoritesList() : this.results(),
@@ -161,7 +88,9 @@ export class AoVeillePage {
 
   protected readonly hasSearched = computed(() => this.applied() !== undefined);
   protected readonly isLoading = computed(() => this.resource.isLoading());
-  protected readonly hasError = computed(() => this.resource.error() !== undefined);
+  protected readonly hasError = computed(
+    () => this.resource.error() !== undefined,
+  );
   protected readonly totalCount = computed(() => this.resource.value().total);
   protected readonly currentPage = computed(() => this.applied()?.page ?? 1);
   protected readonly totalPages = computed(() => {
@@ -169,7 +98,9 @@ export class AoVeillePage {
     if (response.pageSize === 0) return 1;
     return Math.max(1, Math.ceil(response.total / response.pageSize));
   });
-  protected readonly favoritesCount = computed(() => this.favoritesService.favorites().length);
+  protected readonly favoritesCount = computed(
+    () => this.favoritesService.favorites().length,
+  );
 
   constructor() {
     // Marque l'horodatage de la visite courante immédiatement après avoir lu
@@ -178,36 +109,13 @@ export class AoVeillePage {
     markVisitNow();
   }
 
-  protected updateDraft<K extends keyof SearchParams>(key: K, value: SearchParams[K]): void {
-    this.draft.update((current) => ({ ...current, [key]: value }));
-  }
-
-  protected onTextField(key: keyof SearchParams, value: string): void {
-    this.updateDraft(key, value as never);
-  }
-
-  protected onCheckbox(key: keyof SearchParams, checked: boolean): void {
-    this.updateDraft(key, checked as never);
-  }
-
-  protected onDeadlineChange(value: string): void {
-    const parsed = Number.parseInt(value, 10);
-    this.updateDraft('deadlineDays', Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
-  }
-
-  protected resetFilters(): void {
-    this.draft.set({ ...INITIAL });
-    this.applied.set(undefined);
-  }
-
-  protected applyFilters(): void {
-    this.applied.set({ ...this.draft(), page: 1 });
+  protected onSearched(params: SearchFilterParams): void {
+    this.applied.set({ ...params, page: 1 });
     this.activeTab.set('results');
   }
 
-  protected pickSuggestion(term: string): void {
-    this.updateDraft('q', term);
-    this.applyFilters();
+  protected onReset(): void {
+    this.applied.set(undefined);
   }
 
   protected refresh(): void {
@@ -238,7 +146,9 @@ export class AoVeillePage {
       next: () => {
         this.favoriteBusyId.set(null);
         this.toaster.success({
-          title: isCurrentlyFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris',
+          title: isCurrentlyFavorite
+            ? 'Retiré des favoris'
+            : 'Ajouté aux favoris',
         });
       },
       error: () => {
@@ -301,10 +211,11 @@ export class AoVeillePage {
   }
 
   protected async openAnalyseModal(ao: AoItem): Promise<void> {
-    const ref = this.dialog.open<AoAnalyseModalResult, AoAnalyseModalData, AoAnalyseModal>(
-      AoAnalyseModal,
-      { ...APP_DIALOG_CONFIG, data: { ao } },
-    );
+    const ref = this.dialog.open<
+      AoAnalyseModalResult,
+      AoAnalyseModalData,
+      AoAnalyseModal
+    >(AoAnalyseModal, { ...APP_DIALOG_CONFIG, data: { ao } });
     const result = await firstValueFrom(ref.closed);
     if (!result) return;
     this.analyseStore.select(ao);
@@ -314,14 +225,17 @@ export class AoVeillePage {
 }
 
 function toQuery(params: SearchParams): Partial<AoSearchQueryDto> {
+  const days = Number.parseInt(params.deadlineDays, 10);
   return {
     page: params.page,
-    deadlineDays: params.deadlineDays,
+    deadlineDays: Number.isFinite(days) && days > 0 ? days : 0,
     hidePast: params.hidePast,
     hideAttrib: params.hideAttrib,
     ...(params.q.trim() ? { q: params.q.trim() } : {}),
     ...(params.exclude.trim() ? { exclude: params.exclude.trim() } : {}),
-    ...(params.region ? { region: params.region as AoSearchQueryDto['region'] } : {}),
+    ...(params.region
+      ? { region: params.region as AoSearchQueryDto['region'] }
+      : {}),
     ...(params.typeMarche
       ? { typeMarche: params.typeMarche as AoSearchQueryDto['typeMarche'] }
       : {}),

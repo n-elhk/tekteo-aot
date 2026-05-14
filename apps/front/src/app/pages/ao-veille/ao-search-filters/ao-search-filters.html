@@ -1,0 +1,117 @@
+<form [formRoot]="searchForm" (submit)="onSubmit()" novalidate class="space-y-4">
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-surface-900/70">Mots-clés</span>
+      <input
+        type="search"
+        [formField]="searchForm.q"
+        placeholder="Ex. Java, Cybersécurité..."
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      />
+    </label>
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-surface-900/70">À exclure</span>
+      <input
+        type="text"
+        [formField]="searchForm.exclude"
+        placeholder="Ex. nettoyage, BTP..."
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      />
+    </label>
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-surface-900/70">Région</span>
+      <select
+        [formField]="searchForm.region"
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      >
+        @for (region of regions; track region.value) {
+          <option [value]="region.value">{{ region.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-surface-900/70">Type de marché</span>
+      <select
+        [formField]="searchForm.typeMarche"
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      >
+        @for (type of types; track type.value) {
+          <option [value]="type.value">{{ type.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-surface-900/70">Procédure</span>
+      <select
+        [formField]="searchForm.procedure"
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      >
+        @for (procedure of procedures; track procedure.value) {
+          <option [value]="procedure.value">{{ procedure.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="flex flex-col gap-1.5">
+      <span class="text-xs font-medium text-surface-900/70">Échéance dans (jours)</span>
+      <input
+        type="number"
+        inputmode="numeric"
+        [formField]="searchForm.deadlineDays"
+        placeholder="0 = pas de limite"
+        class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+      />
+    </label>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-4 text-sm">
+    <label class="inline-flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        [formField]="searchForm.hidePast"
+        class="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500/30"
+      />
+      <span class="text-surface-900/80">Masquer les AO échus</span>
+    </label>
+    <label class="inline-flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        [formField]="searchForm.hideAttrib"
+        class="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500/30"
+      />
+      <span class="text-surface-900/80">Masquer les avis d'attribution</span>
+    </label>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    <button
+      type="button"
+      class="inline-flex items-center rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-surface-900/70 hover:border-surface-300 hover:text-surface-900 transition"
+      (click)="resetSearchFilters()"
+    >
+      Réinitialiser
+    </button>
+    <button
+      type="submit"
+      class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+    >
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" />
+      </svg>
+      Rechercher
+    </button>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="text-xs font-medium text-surface-900/70">Suggestions :</div>
+  <div class="flex flex-wrap items-center gap-2 pt-1 text-sm">
+    @for (term of suggestions; track term) {
+      <button
+        type="button"
+        (click)="pickSuggestion(term)"
+        class="inline-flex items-center rounded-full border border-surface-200 bg-white px-3 py-1 text-xs font-medium text-surface-900/80 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+      >
+        {{ term }}
+      </button>
+    }
+  </div>
+</form>
