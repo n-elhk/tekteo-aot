@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
@@ -35,16 +41,21 @@ export class AdminUsersPage {
   private readonly dialog = inject(Dialog);
 
   protected readonly roles = ROLES;
-  protected readonly currentUserId = computed(() => this.authStore.user()?.id ?? null);
+  protected readonly currentUserId = computed(
+    () => this.authStore.user()?.id ?? null,
+  );
   protected readonly busyId = signal<string | null>(null);
 
   protected readonly resource = rxResource({
+    defaultValue: [],
     stream: () => this.usersService.list(),
   });
 
-  protected readonly users = computed<AdminUser[]>(() => this.resource.value() ?? []);
+  protected readonly users = computed(() => this.resource.value());
   protected readonly isLoading = computed(() => this.resource.isLoading());
-  protected readonly hasError = computed(() => this.resource.error() !== undefined);
+  protected readonly hasError = computed(
+    () => this.resource.error() !== undefined,
+  );
 
   protected onRoleChange(user: AdminUser, value: string): void {
     const newRole = value as Role;
@@ -84,15 +95,18 @@ export class AdminUsersPage {
       });
       return;
     }
-    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
-      ...APP_DIALOG_CONFIG,
-      data: {
-        title: 'Supprimer cet utilisateur ?',
-        description: `Le compte ${user.email} sera définitivement supprimé.`,
-        confirmLabel: 'Supprimer',
-        variant: 'danger',
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(
+      ConfirmDialog,
+      {
+        ...APP_DIALOG_CONFIG,
+        data: {
+          title: 'Supprimer cet utilisateur ?',
+          description: `Le compte ${user.email} sera définitivement supprimé.`,
+          confirmLabel: 'Supprimer',
+          variant: 'danger',
+        },
       },
-    });
+    );
 
     ref.closed
       .pipe(
@@ -113,7 +127,6 @@ export class AdminUsersPage {
           }),
       });
   }
-
 }
 
 function labelOf(role: Role): string {
@@ -122,7 +135,10 @@ function labelOf(role: Role): string {
 
 function extractErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error !== null) {
-    const maybeError = error as { error?: { message?: unknown }; message?: unknown };
+    const maybeError = error as {
+      error?: { message?: unknown };
+      message?: unknown;
+    };
     const inner = maybeError.error?.message;
     if (typeof inner === 'string') return inner;
     if (typeof maybeError.message === 'string') return maybeError.message;

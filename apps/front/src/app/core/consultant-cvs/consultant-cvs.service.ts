@@ -77,12 +77,11 @@ export class ConsultantCvsService {
 
   watchImportJob(jobId: string): Observable<Partial<CvJobEventDto>> {
     return new Observable((observer) => {
-      const source = new EventSource(
-        `${API}/import-jobs/${jobId}/events`,
-        { withCredentials: true },
-      );
+      const source = new EventSource(`${API}/import-jobs/${jobId}/events`, {
+        withCredentials: true,
+      });
       source.onmessage = (event) => {
-        const data = JSON.parse(event.data) as Partial<CvJobEventDto>;
+        const data: Partial<CvJobEventDto> = JSON.parse(event.data);
         observer.next(data);
         if (data.status === 'done' || data.status === 'failed') {
           source.close();
@@ -120,10 +119,7 @@ export class ConsultantCvsService {
     return `${API}/${consultantId}/generated-cvs/${genId}/download`;
   }
 
-  removeGeneratedCv(
-    consultantId: string,
-    genId: string,
-  ): Observable<void> {
+  removeGeneratedCv(consultantId: string, genId: string): Observable<void> {
     return this.http.delete<void>(
       `${API}/${consultantId}/generated-cvs/${genId}`,
     );

@@ -1,216 +1,106 @@
-import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
-import { Dialog } from '@angular/cdk/dialog';
-import { rxResource } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
-import { filter, switchMap, tap } from 'rxjs';
-import { EMPTY_PAGINATED_RESPONSE } from '@org/types';
 import { AuthStore } from '../../core/auth/auth.store';
-import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
-import type {
-  ConsultantCv,
-  CvGenerationStatusValue,
-  CvTemplateValue,
-  LatestGeneratedCv,
-} from '../../core/consultant-cvs/consultant-cv.model';
-import { ToastService } from '../../core/notifications/toast.service';
 import { Card } from '../../shared/ui/card/card';
 import { ConsultantManualForm } from './consultant-manual-form';
-import { GenerateCvDialog } from './generate-cv-dialog';
-import { MultiFileImportZone } from './multi-file-import-zone';
-import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
-import {
-  ConfirmDialog,
-  type ConfirmDialogData,
-} from '../../shared/ui/confirm-dialog/confirm-dialog';
-
-const PAGE_SIZE = 20;
+import { CvImportSection } from './cv-import-section/cv-import-section';
+import { ConsultantListSection } from './consultant-list-section/consultant-list-section';
 
 type Tab = 'import' | 'manual';
 
-interface BadgeInfo {
-  readonly label: string;
-  readonly color: string;
-  readonly bg: string;
-}
-
-const STATUS_BADGES: Record<CvGenerationStatusValue | 'none', BadgeInfo> = {
-  none: { label: 'Aucun CV', color: '#6B7280', bg: '#F3F4F6' },
-  pending: { label: 'En attente', color: '#92400E', bg: '#FEF3C7' },
-  processing: { label: 'En cours', color: '#92400E', bg: '#FEF3C7' },
-  success: { label: 'Généré', color: '#065F46', bg: '#D1FAE5' },
-  failed: { label: 'Échec', color: '#991B1B', bg: '#FEE2E2' },
-};
-
+/**
+ * Page d'accueil "Gérer vos consultants" : simple coquille qui orchestre
+ * la composition de trois sections autonomes (import, manuel, liste).
+ *
+ * Aucune logique métier ici — on se contente de :
+ * - gérer l'onglet actif (import / manuel)
+ * - relayer les événements `imported` / `created` vers la liste
+ *   via `viewChild.required` + méthode publique `reload()`.
+ */
 @Component({
   selector: 'app-cv-formatter-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    RouterLink,
-    Card,
-    DatePipe,
-    MultiFileImportZone,
-    ConsultantManualForm,
-  ],
-  templateUrl: './cv-formatter.page.html',
+  imports: [Card, CvImportSection, ConsultantManualForm, ConsultantListSection],
+  template: `
+    <div class="space-y-6">
+      <!-- En-tête -->
+      <header class="space-y-1">
+        <p class="text-sm font-medium text-brand-700">Consultants</p>
+        <h1 class="text-3xl font-semibold tracking-tight text-surface-900">
+          Gérer vos consultants
+        </h1>
+        <p class="text-sm text-surface-900/60">
+          Importez plusieurs CV ou créez un consultant manuellement, puis
+          générez des CV PDF à partir de vos templates.
+        </p>
+      </header>
+
+      <!-- Bloc création (tabs) -->
+      @if (canEdit()) {
+        <app-card title="Ajouter un consultant">
+          <div class="flex border-b border-surface-200 -mt-2 mb-4">
+            <button
+              type="button"
+              class="px-4 py-2 text-sm font-medium transition"
+              [class]="
+                tab() === 'import'
+                  ? 'border-b-2 border-brand-700 text-brand-700'
+                  : 'text-surface-900/60 hover:text-surface-900'
+              "
+              (click)="setTab('import')"
+            >
+              Importer un document
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 text-sm font-medium transition"
+              [class]="
+                tab() === 'manual'
+                  ? 'border-b-2 border-brand-700 text-brand-700'
+                  : 'text-surface-900/60 hover:text-surface-900'
+              "
+              (click)="setTab('manual')"
+            >
+              Créer manuellement
+            </button>
+          </div>
+
+          @if (tab() === 'import') {
+            <app-cv-import-section (imported)="onImportFinished()" />
+          } @else {
+            <app-consultant-manual-form (created)="onManualCreated()" />
+          }
+        </app-card>
+      }
+
+      <!-- Liste paginée -->
+      <app-card title="Consultants enregistrés">
+        <app-consultant-list-section [canEdit]="canEdit()" />
+      </app-card>
+    </div>
+  `,
 })
 export class CvFormatterPage {
-  private readonly cvsService = inject(ConsultantCvsService);
-  private readonly toaster = inject(ToastService);
   private readonly authStore = inject(AuthStore);
-  private readonly dialog = inject(Dialog);
+  private readonly listSection = viewChild.required(ConsultantListSection);
 
   protected readonly canEdit = this.authStore.canEdit;
   protected readonly tab = signal<Tab>('import');
-  protected readonly page = signal(1);
-  protected readonly pageSize = PAGE_SIZE;
-
-  protected readonly resource = rxResource({
-    params: () => ({ page: this.page(), pageSize: this.pageSize }),
-    stream: ({ params }) => this.cvsService.list(params),
-    defaultValue: EMPTY_PAGINATED_RESPONSE,
-  });
-
-  protected readonly cvs = computed(() => this.resource.value().items);
-  protected readonly total = computed(() => this.resource.value().total);
-  protected readonly totalPages = computed(() =>
-    Math.max(1, Math.ceil(this.total() / this.pageSize)),
-  );
-  protected readonly listLoading = computed(() => this.resource.isLoading());
-  protected readonly listError = computed(
-    () => this.resource.error() !== undefined,
-  );
 
   protected setTab(tab: Tab): void {
     this.tab.set(tab);
   }
 
   protected onImportFinished(): void {
-    this.toaster.success({
-      title: 'Import terminé',
-      description: 'Les profils ont été ajoutés.',
-    });
-    this.resource.reload();
+    this.listSection().reload();
   }
 
   protected onManualCreated(): void {
-    this.resource.reload();
-  }
-
-  protected nextPage(): void {
-    if (this.page() < this.totalPages()) this.page.update((p) => p + 1);
-  }
-
-  protected prevPage(): void {
-    if (this.page() > 1) this.page.update((p) => p - 1);
-  }
-
-  // -----------------------------------------------------------
-  // Actions par ligne
-  // -----------------------------------------------------------
-
-  protected statusBadge(latest: LatestGeneratedCv | null | undefined): BadgeInfo {
-    return STATUS_BADGES[latest?.status ?? 'none'];
-  }
-
-  protected onActionClick(cv: ConsultantCv): void {
-    const latest = cv.latestGeneratedCv ?? null;
-    if (!latest) {
-      this.openGenerateDialog(cv.id);
-      return;
-    }
-    if (latest.status === 'success') {
-      window.open(
-        this.cvsService.buildDownloadUrl(cv.id, latest.id),
-        '_blank',
-      );
-      return;
-    }
-    if (latest.status === 'failed') {
-      this.openGenerateDialog(cv.id);
-      return;
-    }
-    // pending / processing → no-op
-  }
-
-  protected deleteCv(cv: ConsultantCv, event: MouseEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
-      ...APP_DIALOG_CONFIG,
-      data: {
-        title: 'Supprimer ce CV ?',
-        description: cv.consultantName
-          ? `Le CV de « ${cv.consultantName} » sera définitivement supprimé.`
-          : 'Ce CV sera définitivement supprimé.',
-        confirmLabel: 'Supprimer',
-        variant: 'danger',
-      },
-    });
-
-    ref.closed
-      .pipe(
-        filter(Boolean),
-        switchMap(() => this.cvsService.remove(cv.id)),
-        tap(() => {
-          this.toaster.success({ title: 'Consultant supprimé' });
-          this.resource.reload();
-        }),
-      )
-      .subscribe({
-        error: () =>
-          this.toaster.error({
-            title: 'Suppression impossible',
-            description: 'Veuillez réessayer dans un instant.',
-          }),
-      });
-  }
-
-  protected initials(name: string | null | undefined): string {
-    if (!name) return '?';
-    return (
-      name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase() ?? '')
-        .join('') || '?'
-    );
-  }
-
-  // -----------------------------------------------------------
-  // Mini-modale de choix de template
-  // -----------------------------------------------------------
-
-  private openGenerateDialog(consultantId: string): void {
-    const ref = this.dialog.open<CvTemplateValue | null>(GenerateCvDialog, {
-      hasBackdrop: true,
-    });
-
-    ref.closed
-      .pipe(
-        filter(Boolean),
-        switchMap((template) => this.cvsService.generate(consultantId, template)),
-        tap(() => {
-          this.toaster.success({
-            title: 'Génération lancée',
-            description: 'Le CV est en cours de production.',
-          });
-          this.resource.reload();
-        }),
-      )
-      .subscribe({
-        error: () =>
-          this.toaster.error({
-            title: 'Génération impossible',
-            description: 'Veuillez réessayer dans un instant.',
-          }),
-      });
+    this.listSection().reload();
   }
 }

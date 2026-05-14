@@ -1,27 +1,13 @@
 <div class="space-y-4">
   <!-- Drop zone -->
-  <label
-    class="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-surface-200 bg-surface-50/60 px-6 py-10 cursor-pointer transition hover:border-brand-400 hover:bg-brand-50/40"
-    (dragover)="onDragOver($event)"
-    (drop)="onDrop($event)"
-  >
-    <svg viewBox="0 0 24 24" class="h-10 w-10 text-surface-900/30" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16" />
-    </svg>
-    <p class="text-sm font-medium text-surface-900">
-      Glissez vos PDF/DOCX ici, ou cliquez pour parcourir
-    </p>
-    <p class="text-xs text-surface-900/50">
-      Maximum 10 fichiers · 10 Mo par fichier
-    </p>
-    <input
-      type="file"
-      multiple
-      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      class="sr-only"
-      (change)="onFilesSelected($event)"
-    />
-  </label>
+  <app-file-dropzone
+    [multiple]="true"
+    [accept]="importAcceptAttr"
+    [disabled]="running()"
+    label="Glissez vos PDF/DOCX ici, ou cliquez pour parcourir"
+    hint="Maximum 10 fichiers · 10 Mo par fichier"
+    (filesPicked)="onFilesPicked($event)"
+  />
 
   <!-- Sélecteur de template global -->
   <fieldset class="rounded-xl border border-surface-200 p-4">
@@ -55,7 +41,7 @@
   <!-- Liste des fichiers -->
   @if (entries().length > 0) {
     <ul class="space-y-2">
-      @for (entry of entries(); track entry.file.name; let i = $index) {
+      @for (entry of entries(); track entry.localId) {
         <li class="flex items-center gap-3 rounded-xl border border-surface-200 bg-white px-4 py-2.5">
           <svg viewBox="0 0 24 24" class="h-4 w-4 text-surface-900/50 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
@@ -85,7 +71,7 @@
               type="button"
               class="rounded-lg p-1.5 text-surface-900/40 hover:bg-red-50 hover:text-red-600"
               aria-label="Retirer ce fichier"
-              (click)="removeEntry(i)"
+              (click)="removeEntry(entry.localId)"
             >
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
