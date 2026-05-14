@@ -17,7 +17,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         <ng-content select="[cardAction]" />
       </header>
     }
-    <div class="text-surface-900">
+    <div class="overflow-hidden text-surface-900">
       <ng-content />
     </div>
   `,

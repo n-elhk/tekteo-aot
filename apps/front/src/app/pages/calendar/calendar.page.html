@@ -123,7 +123,7 @@
       </app-card>
 
       <!-- Panneau latéral -->
-      <div class="space-y-4">
+      <div class="min-w-0 space-y-4">
         <app-card [title]="selectedKey() ? 'Échéance sélectionnée' : 'Prochaines échéances'">
           @if (selectedKey()) {
             <p class="mb-3 text-xs text-surface-900/60 capitalize">
