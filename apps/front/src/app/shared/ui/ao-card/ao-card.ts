@@ -7,6 +7,8 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import type { AoItem } from '../../../core/ao/ao.model';
 
 interface DeadlineBadge {
@@ -26,6 +28,7 @@ const BADGE_BASE = 'text-xs px-2 py-0.5 rounded-full font-medium';
   selector: 'app-ao-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
+  imports: [CdkMenuTrigger, CdkMenu, CdkMenuItem, DatePipe],
   template: `
     <article
       class="group rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.25)]"
@@ -33,10 +36,10 @@ const BADGE_BASE = 'text-xs px-2 py-0.5 rounded-full font-medium';
       [class.border-surface-200/70]="!isImported()"
       [class.hover:border-brand-300]="!isImported()"
     >
-      <div class="flex items-start justify-between gap-4">
-        <div class="min-w-0 flex-1">
-          <!-- Rangée de badges -->
-          <div class="mb-2 flex flex-wrap items-center gap-2">
+      <div>
+        <!-- Header : badges + actions -->
+        <div class="mb-2 flex items-start justify-between gap-4">
+          <div class="flex flex-wrap items-center gap-2">
             <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-700">
               {{ ao().source || 'BOAMP' }}
             </span>
@@ -63,53 +66,8 @@ const BADGE_BASE = 'text-xs px-2 py-0.5 rounded-full font-medium';
             }
           </div>
 
-          <!-- Titre -->
-          <h3 class="text-sm font-semibold text-surface-900 leading-snug line-clamp-3">
-            {{ ao().title }}
-          </h3>
-
-          <!-- Méta -->
-          <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-900/60">
-            @if (ao().buyer; as buyer) {
-              <span class="inline-flex items-center gap-1 truncate max-w-full">
-                <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01" />
-                </svg>
-                <span class="truncate">{{ buyer }}</span>
-              </span>
-            }
-            @if (ao().department; as department) {
-              <span class="inline-flex items-center gap-1">
-                <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1118 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                Dép. {{ department }}
-              </span>
-            }
-            @if (formatPubDate(); as pub) {
-              <span class="inline-flex items-center gap-1">
-                <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 2v4M8 2v4M3 10h18" />
-                </svg>
-                Publié le {{ pub }}
-              </span>
-            }
-            @if (formattedDeadline(); as deadline) {
-              <span class="inline-flex items-center gap-1 font-medium" [class.text-red-600]="isUrgent()" [class.text-surface-900/80]="!isUrgent()">
-                <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 2" />
-                </svg>
-                Limite : {{ deadline }}
-              </span>
-            }
-          </div>
-        </div>
-
-        <!-- Colonne d'actions -->
-        <div class="flex flex-col gap-2 items-end shrink-0">
+          <!-- Actions : favori + menu -->
+          <div class="flex items-center gap-1 shrink-0">
           <!-- Favori -->
           <button
             type="button"
@@ -129,92 +87,170 @@ const BADGE_BASE = 'text-xs px-2 py-0.5 rounded-full font-medium';
             </svg>
           </button>
 
-          <!-- Créer un projet / Projet créé -->
-          @if (isImported()) {
-            <span class="text-xs font-medium text-green-600 px-3 py-1.5">
-              ✓ Projet créé
-            </span>
-          } @else {
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 px-3 py-1.5 text-xs font-medium text-white hover:from-brand-600 hover:to-brand-800 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-              (click)="createProjectRequested.emit(ao())"
-            >
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM12 11v6M9 14h6" />
-              </svg>
-              Créer un projet
-            </button>
-          }
-
-          <!-- Analyser IA -->
+          <!-- Déclencheur du menu actions -->
           <button
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
-            (click)="analyseRequested.emit(ao())"
+            class="rounded-full p-1.5 bg-surface-100 text-surface-900/40 hover:bg-surface-200 hover:text-surface-900/70 transition"
+            aria-label="Actions"
+            [cdkMenuTriggerFor]="actionsMenu"
           >
-            <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l2 4 4 2-4 2-2 4-2-4-4-2 4-2 2-4z" transform="translate(7 0)" />
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="5" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="12" cy="19" r="1.5" />
             </svg>
-            Analyser IA
           </button>
+          </div>
+        </div>
 
-          <!-- DCE / annonce -->
-          @if (ao().dceUrl; as dceUrl) {
-            <a
-              [href]="dceUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50 transition"
-              title="Accéder au profil acheteur pour télécharger le DCE"
-            >
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M14 3h7v7M10 14L21 3M21 14v6a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h6" />
+        <!-- Titre -->
+        <h3 class="text-sm font-semibold text-surface-900 leading-snug line-clamp-3">
+          {{ ao().title }}
+        </h3>
+
+        <!-- Méta -->
+        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-900/60">
+          @if (ao().buyer; as buyer) {
+            <span class="inline-flex items-center gap-1 truncate max-w-full">
+              <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01" />
               </svg>
-              Accéder au DCE
-            </a>
-          } @else if (ao().url; as url) {
-            <a
-              [href]="url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-xs font-medium text-surface-900/70 hover:bg-surface-50 transition"
-            >
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M14 3h7v7M10 14L21 3M21 14v6a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h6" />
-              </svg>
-              Voir l'annonce
-            </a>
+              <span class="truncate">{{ buyer }}</span>
+            </span>
           }
-
-          <!-- Importer CCTP -->
-          <button
-            type="button"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            [disabled]="cctpBusy()"
-            (click)="triggerCctpInput()"
-            title="Importer un CCTP ou RC pour pré-remplir le projet"
-          >
-            @if (cctpBusy()) {
-              <span class="h-3.5 w-3.5 rounded-full border-2 border-blue-500 border-r-transparent animate-spin" aria-hidden="true"></span>
-              Extraction…
-            } @else {
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+          @if (ao().department; as department) {
+            <span class="inline-flex items-center gap-1">
+              <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1118 0z" />
+                <circle cx="12" cy="10" r="3" />
               </svg>
-              Importer CCTP
-            }
-          </button>
-          <input
-            #cctpInput
-            type="file"
-            accept=".pdf,.docx"
-            class="hidden"
-            (change)="onCctpFileChange($event)"
-          />
+              Dép. {{ department }}
+            </span>
+          }
+          @if (ao().publishedAt) {
+            <span class="inline-flex items-center gap-1">
+              <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+              Publié le {{ ao().publishedAt | date: 'dd MMM y' }}
+            </span>
+          }
+          @if (ao().deadline) {
+            <span class="inline-flex items-center gap-1 font-medium" [class.text-red-600]="isUrgent()" [class.text-surface-900/80]="!isUrgent()">
+              <svg viewBox="0 0 24 24" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 2" />
+              </svg>
+              Limite : {{ ao().deadline | date: 'dd MMM y' }}
+            </span>
+          }
         </div>
       </div>
     </article>
+
+    <!-- Menu CDK -->
+    <ng-template #actionsMenu>
+      <div
+        cdkMenu
+        class="z-50 w-52 rounded-xl border border-surface-200 bg-white py-1 shadow-lg shadow-surface-900/10 outline-none"
+      >
+        <!-- Créer un projet -->
+        @if (isImported()) {
+          <div class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-green-600">
+            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Projet créé
+          </div>
+        } @else {
+          <button
+            cdkMenuItem
+            type="button"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium text-brand-700 hover:bg-brand-50 transition"
+            (click)="createProjectRequested.emit(ao())"
+          >
+            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7zM12 11v6M9 14h6" />
+            </svg>
+            Créer un projet
+          </button>
+        }
+
+        <div class="my-1 border-t border-surface-100"></div>
+
+        <!-- Analyser IA -->
+        <button
+          cdkMenuItem
+          type="button"
+          class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-purple-700 hover:bg-purple-50 transition"
+          (click)="analyseRequested.emit(ao())"
+        >
+          <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l2 4 4 2-4 2-2 4-2-4-4-2 4-2 2-4z" transform="translate(7 0)" />
+          </svg>
+          Analyser IA
+        </button>
+
+        <!-- DCE / annonce -->
+        @if (ao().dceUrl; as dceUrl) {
+          <a
+            cdkMenuItem
+            [href]="dceUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-green-700 hover:bg-green-50 transition"
+          >
+            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 3h7v7M10 14L21 3M21 14v6a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h6" />
+            </svg>
+            Accéder au DCE
+          </a>
+        } @else if (ao().url; as url) {
+          <a
+            cdkMenuItem
+            [href]="url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-surface-900/70 hover:bg-surface-50 transition"
+          >
+            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14 3h7v7M10 14L21 3M21 14v6a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h6" />
+            </svg>
+            Voir l'annonce
+          </a>
+        }
+
+        <div class="my-1 border-t border-surface-100"></div>
+
+        <!-- Importer CCTP -->
+        <button
+          cdkMenuItem
+          type="button"
+          class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          [disabled]="cctpBusy()"
+          (click)="triggerCctpInput()"
+        >
+          @if (cctpBusy()) {
+            <span class="h-4 w-4 shrink-0 rounded-full border-2 border-blue-500 border-r-transparent animate-spin" aria-hidden="true"></span>
+            Extraction…
+          } @else {
+            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+            </svg>
+            Importer CCTP
+          }
+        </button>
+      </div>
+    </ng-template>
+
+    <input
+      #cctpInput
+      type="file"
+      accept=".pdf,.docx"
+      class="hidden"
+      (change)="onCctpFileChange($event)"
+    />
   `,
 })
 export class AoCard {
@@ -232,14 +268,6 @@ export class AoCard {
 
   private readonly cctpInputRef =
     viewChild<ElementRef<HTMLInputElement>>('cctpInput');
-
-  protected readonly formattedDeadline = computed(() =>
-    formatDate(this.ao().deadline),
-  );
-
-  protected readonly formatPubDate = computed(() =>
-    formatDate(this.ao().publishedAt),
-  );
 
   protected readonly daysLeft = computed<number | null>(() => {
     const deadline = this.ao().deadline;
@@ -286,18 +314,7 @@ export class AoCard {
     if (file) {
       this.cctpFileSelected.emit({ ao: this.ao(), file });
     }
-    // Permet de re-sélectionner le même fichier après une erreur d'extraction.
     target.value = '';
   }
 }
 
-function formatDate(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
