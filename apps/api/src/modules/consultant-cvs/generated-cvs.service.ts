@@ -12,7 +12,7 @@ import {
 } from '../../common/storage/storage.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
-const STORAGE_SCOPE_ROOT = 'cv';
+const STORAGE_SCOPE_ROOT = 'cv-outputs';
 
 @Injectable()
 export class GeneratedCvsService {

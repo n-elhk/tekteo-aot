@@ -57,7 +57,7 @@ export class LocalStorageService
     originalName: string,
     buffer: Buffer,
   ): Promise<StoredFile> {
-    const safeScope = sanitizeSegment(scope);
+    const safeScope = scope.split('/').map(sanitizeSegment).join('/');
     const ext = extractExtension(originalName);
     const storedName = `${randomUUID()}${ext}`;
     const relPath = join(safeScope, storedName);
