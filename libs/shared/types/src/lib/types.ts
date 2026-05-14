@@ -48,6 +48,7 @@ export interface BpuLine {
   unit: string;
   quantity: number | string;
   unitPrice: number | string;
+  tva: number | string;
   lineType: 'bpu' | 'dpgf';
   phase: string | null;
   orderIndex: number;

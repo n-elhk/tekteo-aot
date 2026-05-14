@@ -323,6 +323,7 @@ model BpuLine {
   unit            BpuUnit     @default(jour)
   quantity        Decimal     @db.Decimal(10, 2) @default(0)
   unitPrice       Decimal     @db.Decimal(10, 2) @default(0) @map("unit_price")
+  tva             Decimal     @db.Decimal(5, 2) @default(20) @map("tva")
   lineType        BpuLineType @default(bpu) @map("line_type")
   phase           String?
   orderIndex      Int         @default(0) @map("order_index")

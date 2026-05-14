@@ -217,6 +217,7 @@ export const createBpuLineSchema = z.object({
   unit: bpuUnitSchema.default('jour'),
   quantity: z.number().nonnegative().default(0),
   unitPrice: z.number().nonnegative().default(0),
+  tva: z.number().nonnegative().max(100).default(20),
   lineType: bpuLineTypeSchema.default('bpu'),
   phase: z.string().max(200).optional(),
   orderIndex: z.number().int().nonnegative().default(0),

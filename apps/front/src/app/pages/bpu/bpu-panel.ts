@@ -1,6 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  input,
+  signal,
+} from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { filter, finalize, switchMap, tap } from 'rxjs';
+import {
+  applyEach,
+  disabled,
+  FormField,
+  FormRoot,
+  form,
+  min,
+  submit,
+  required,
+} from '@angular/forms/signals';
+import { filter, firstValueFrom } from 'rxjs';
 import {
   BpuLine,
   BpuLineType,
@@ -29,15 +47,59 @@ const LINE_TYPES: ReadonlyArray<{ value: BpuLineType; label: string }> = [
   { value: 'dpgf', label: 'DPGF' },
 ];
 
+interface BpuLineFormModel {
+  profileTitle: string;
+  experienceLevel: string;
+  unit: BpuUnit;
+  quantity: number;
+  unitPrice: number;
+  tva: number;
+  phase: string;
+  lineType: BpuLineType;
+  orderIndex: number;
+}
+
+function toFormModel(line: BpuLine): BpuLineFormModel {
+  return {
+    profileTitle: line.profileTitle ?? '',
+    experienceLevel: line.experienceLevel ?? 'confirme',
+    unit: (line.unit as BpuUnit) ?? 'jour',
+    quantity: Number(line.quantity) || 0,
+    unitPrice: Number(line.unitPrice) || 0,
+    tva: Number(line.tva) || 20,
+    phase: line.phase ?? '',
+    lineType: line.lineType,
+    orderIndex: line.orderIndex,
+  };
+}
+
+function emptyLine(
+  lineType: BpuLineType,
+  orderIndex: number,
+): BpuLineFormModel {
+  return {
+    profileTitle: '',
+    experienceLevel: 'confirme',
+    unit: 'jour',
+    quantity: 0,
+    unitPrice: 0,
+    tva: 20,
+    phase: '',
+    lineType,
+    orderIndex,
+  };
+}
+
 /**
  * Panneau d'édition des lignes BPU/DPGF d'un projet.
  *
- * Deux onglets (BPU et DPGF) avec édition inline et auto-totaux.
+ * Deux onglets (BPU et DPGF) avec édition via Signal Forms.
+ * Les modifications sont enregistrées en bulk via le bouton Enregistrer.
  */
 @Component({
   selector: 'app-bpu-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Card, Button],
+  imports: [Card, Button, FormRoot, FormField],
   templateUrl: './bpu-panel.html',
 })
 export class BpuPanel {
@@ -52,26 +114,86 @@ export class BpuPanel {
   protected readonly units = UNITS;
   protected readonly lineTypes = LINE_TYPES;
   protected readonly activeType = signal<BpuLineType>('bpu');
-  protected readonly busyId = signal<string | null>(null);
 
   protected readonly resource = rxResource({
     params: () => this.projectId(),
     stream: ({ params }) => this.bpuService.listByProject(params),
+    defaultValue: [],
   });
 
-  protected readonly allLines = computed<BpuLine[]>(() => this.resource.value() ?? []);
   protected readonly isLoading = computed(() => this.resource.isLoading());
-  protected readonly hasError = computed(() => this.resource.error() !== undefined);
+  protected readonly hasError = computed(
+    () => this.resource.error() !== undefined,
+  );
 
-  protected readonly visibleLines = computed<BpuLine[]>(() => {
-    const type = this.activeType();
-    return this.allLines()
-      .filter((line) => line.lineType === type)
-      .sort((a, b) => a.orderIndex - b.orderIndex);
+  protected readonly model = linkedSignal({
+    source: () => this.resource.value(),
+    computation: (lines) => ({ lines: lines.map(toFormModel) }),
   });
+
+  protected readonly bpuForm = form(
+    this.model,
+    (path) => {
+      disabled(path, () => !this.canEdit());
+      applyEach(path.lines, (line) => {
+        required(line.profileTitle);
+        min(line.quantity, 0, { message: 'Quantité invalide' });
+        min(line.unitPrice, 0, { message: 'Prix unitaire HT invalide' });
+        min(line.tva, 0, { message: 'TVA invalide' });
+      });
+    },
+    {
+      submission: {
+        action: async () => {
+          const lineType = this.activeType();
+          const lines: BpuLineFormModel[] = this.model()
+            .lines.filter((l) => l.lineType === lineType)
+            .map((l, idx) => ({ ...l, orderIndex: idx }));
+
+          const dto = {
+            lineType,
+            replace: true as const,
+            lines: lines.map((l) => ({
+              profileTitle: l.profileTitle,
+              experienceLevel: l.experienceLevel,
+              unit: l.unit,
+              quantity: Number(l.quantity) || 0,
+              unitPrice: Number(l.unitPrice) || 0,
+              tva: Number(l.tva) || 20,
+              lineType: l.lineType,
+              phase: l.phase ? l.phase : undefined,
+              orderIndex: l.orderIndex,
+            })),
+          };
+
+          try {
+            await firstValueFrom(
+              this.bpuService.bulkUpsert(this.projectId(), dto),
+            );
+            this.toaster.success({ title: 'Lignes enregistrées' });
+            this.resource.reload();
+            return undefined;
+          } catch {
+            this.toaster.error({
+              title: 'Enregistrement impossible',
+              description: 'Veuillez réessayer.',
+            });
+            return undefined;
+          }
+        },
+      },
+    },
+  );
+
+  protected readonly visibleCount = computed(
+    () =>
+      this.model().lines.filter((l) => l.lineType === this.activeType()).length,
+  );
 
   protected readonly total = computed(() =>
-    this.visibleLines().reduce((sum, line) => sum + lineTotal(line), 0),
+    this.model()
+      .lines.filter((l) => l.lineType === this.activeType())
+      .reduce((sum, line) => sum + lineTotal(line), 0),
   );
 
   protected switchType(type: BpuLineType): void {
@@ -79,97 +201,43 @@ export class BpuPanel {
   }
 
   protected addLine(): void {
-    const projectId = this.projectId();
-    const orderIndex = this.visibleLines().length;
-    this.bpuService
-      .create(projectId, {
-        lineType: this.activeType(),
-        orderIndex,
-        profileTitle: '',
-        experienceLevel: 'confirme',
-        unit: 'jour',
-        quantity: 0,
-        unitPrice: 0,
-      })
-      .subscribe({
-        next: () => this.resource.reload(),
-        error: () =>
-          this.toaster.error({
-            title: 'Création impossible',
-            description: 'Veuillez réessayer.',
-          }),
-      });
+    const type = this.activeType();
+    const orderIndex = this.model().lines.filter(
+      (l) => l.lineType === type,
+    ).length;
+    this.model.update((m) => ({
+      lines: [...m.lines, emptyLine(type, orderIndex)],
+    }));
   }
 
-  protected updateField<K extends keyof BpuLine>(line: BpuLine, field: K, value: BpuLine[K]): void {
-    if (this.busyId() === line.id) return;
-    this.busyId.set(line.id);
-    this.bpuService
-      .update(line.id, { [field]: value } as Record<string, unknown> as never)
-      .subscribe({
-        next: () => {
-          this.busyId.set(null);
-          this.resource.reload();
+  protected deleteLine(index: number): void {
+    const line = this.model().lines[index];
+    if (!line) return;
+
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(
+      ConfirmDialog,
+      {
+        ...APP_DIALOG_CONFIG,
+        data: {
+          title: 'Supprimer cette ligne ?',
+          description: line.profileTitle
+            ? `« ${line.profileTitle} » sera supprimée.`
+            : 'Cette ligne sera supprimée.',
+          confirmLabel: 'Supprimer',
+          variant: 'danger',
         },
-        error: () => {
-          this.busyId.set(null);
-          this.toaster.error({
-            title: 'Mise à jour impossible',
-            description: 'Veuillez réessayer.',
-          });
-        },
-      });
-  }
-
-  protected onTextField(line: BpuLine, field: 'profileTitle' | 'phase', value: string): void {
-    this.updateField(line, field, value as never);
-  }
-
-  protected onUnitChange(line: BpuLine, value: string): void {
-    this.updateField(line, 'unit', value as BpuUnit);
-  }
-
-  protected onNumberField(
-    line: BpuLine,
-    field: 'quantity' | 'unitPrice',
-    value: string,
-  ): void {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return;
-    this.updateField(line, field, num as never);
-  }
-
-  protected deleteLine(line: BpuLine): void {
-    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(ConfirmDialog, {
-      ...APP_DIALOG_CONFIG,
-      data: {
-        title: 'Supprimer cette ligne ?',
-        description: line.profileTitle
-          ? `« ${line.profileTitle} » sera supprimée.`
-          : 'Cette ligne sera supprimée.',
-        confirmLabel: 'Supprimer',
-        variant: 'danger',
       },
-    });
+    );
 
-    ref.closed
-      .pipe(
-        filter(Boolean),
-        tap(() => this.busyId.set(line.id)),
-        switchMap(() => this.bpuService.remove(line.id)),
-        tap(() => {
-          this.toaster.success({ title: 'Ligne supprimée' });
-          this.resource.reload();
-        }),
-        finalize(() => this.busyId.set(null)),
-      )
-      .subscribe({
-        error: () =>
-          this.toaster.error({
-            title: 'Suppression impossible',
-            description: 'Veuillez réessayer.',
-          }),
-      });
+    ref.closed.pipe(filter(Boolean)).subscribe(() => {
+      this.model.update((m) => ({
+        lines: m.lines.filter((_, idx) => idx !== index),
+      }));
+    });
+  }
+
+  protected onSubmit(): void {
+    void submit(this.bpuForm);
   }
 
   protected formatPrice(value: number): string {
@@ -180,12 +248,15 @@ export class BpuPanel {
     }).format(value);
   }
 
-  protected lineTotalFormatted(line: BpuLine): string {
+  protected lineTotalFormatted(line: BpuLineFormModel): string {
     return this.formatPrice(lineTotal(line));
   }
 }
 
-function lineTotal(line: BpuLine): number {
+function lineTotal(line: {
+  quantity: number | string;
+  unitPrice: number | string;
+}): number {
   const qty = Number(line.quantity);
   const price = Number(line.unitPrice);
   if (!Number.isFinite(qty) || !Number.isFinite(price)) return 0;
