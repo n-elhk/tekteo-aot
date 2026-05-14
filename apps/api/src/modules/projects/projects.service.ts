@@ -14,7 +14,6 @@ export class ProjectsService {
       orderBy: { updatedAt: 'desc' },
       include: {
         createdBy: { select: { id: true, email: true, fullName: true } },
-        _count: { select: { sections: true, jobProfiles: true } },
       },
     });
   }
@@ -24,10 +23,10 @@ export class ProjectsService {
       where: { id },
       include: {
         createdBy: { select: { id: true, email: true, fullName: true } },
-        sections: { orderBy: { orderIndex: 'asc' } },
-        jobProfiles: { orderBy: { createdAt: 'desc' } },
-        documents: { orderBy: { uploadedAt: 'desc' } },
-        bpuLines: { orderBy: { orderIndex: 'asc' } },
+        sections: { select: { id: true } },
+        jobProfiles: { select: { id: true } },
+        documents: { select: { id: true } },
+        bpuLines: { select: { id: true } },
       },
     });
     if (!project) {

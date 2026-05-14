@@ -1,3 +1,5 @@
+import type { CreateJobProfileDto } from '@org/schemas';
+
 // ============================================================
 // Auth types
 // ============================================================
@@ -33,11 +35,61 @@ export interface Project {
   lots: string[];
   status: ProjectStatus;
   sourceAoId: string | null;
-  createdById: string | null;
-  createdBy?: { id: string; email: string; fullName: string | null } | null;
+  createdBy: { id: string; email: string; fullName: string | null } | null;
   createdAt: string;
   updatedAt: string;
-  _count?: { sections: number; jobProfiles: number };
+}
+
+export interface BpuLine {
+  id: string;
+  projectId: string;
+  profileTitle: string;
+  experienceLevel: string;
+  unit: string;
+  quantity: number | string;
+  unitPrice: number | string;
+  lineType: 'bpu' | 'dpgf';
+  phase: string | null;
+  orderIndex: number;
+  createdAt: string;
+}
+
+export type DocumentCategory = 'dce' | 'offre' | 'candidature';
+
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  fileName: string;
+  fileType: string;
+  category: DocumentCategory;
+  storagePath: string;
+  fileSize: number | null;
+  uploadedById: string | null;
+  uploadedAt: string;
+  uploadedBy: { id: string; email: string; fullName: string | null } | null;
+}
+
+export type JobProfileStatus = 'brouillon' | 'valide';
+
+export interface JobProfile extends CreateJobProfileDto {
+  id: string;
+  projectId: string | null;
+  status: JobProfileStatus;
+  generatedContent: string | null;
+  consultantName: string | null;
+  consultantTitle: string | null;
+  consultantYearsExp: number | null;
+  consultantSummary: string | null;
+  cvId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectDetail extends Project {
+  sections: { id: string }[];
+  jobProfiles: { id: string }[];
+  documents: { id: string }[];
+  bpuLines: { id: string }[];
 }
 
 // ============================================================

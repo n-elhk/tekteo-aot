@@ -6,24 +6,11 @@ import type {
   CreateBpuLineDto,
   UpdateBpuLineDto,
 } from '@org/schemas';
+import type { BpuLine } from '@org/types';
 
 export type BpuUnit = 'jour' | 'forfait' | 'mois';
 export type BpuLineType = 'bpu' | 'dpgf';
-
-export interface BpuLine {
-  readonly id: string;
-  readonly projectId: string;
-  readonly profileTitle: string;
-  readonly experienceLevel: string;
-  readonly unit: BpuUnit;
-  readonly quantity: number | string;
-  readonly unitPrice: number | string;
-  readonly lineType: BpuLineType;
-  readonly phase: string | null;
-  readonly orderIndex: number;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
+export type { BpuLine };
 
 const API = '/api';
 

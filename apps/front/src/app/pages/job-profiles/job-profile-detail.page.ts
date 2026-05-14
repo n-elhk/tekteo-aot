@@ -139,7 +139,7 @@ export class JobProfileDetailPage {
           startDate: profile.startDate ?? '',
           clientSector: profile.clientSector ?? '',
           quantityNeeded: profile.quantityNeeded,
-          generatedContent: profile.generatedContent,
+          generatedContent: profile.generatedContent ?? '',
         });
         this.requiredSkills.set([...profile.requiredSkills]);
         this.optionalSkills.set([...profile.optionalSkills]);

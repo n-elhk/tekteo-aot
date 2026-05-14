@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { filter, switchMap, tap } from 'rxjs';
-import type { Project } from '@org/types';
+import type { ProjectDetail } from '@org/types';
 import { ProjectsService } from '../../core/projects/projects.service';
 import { Dialog } from '@angular/cdk/dialog';
 import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
@@ -57,7 +57,7 @@ export class ProjectDetailPage {
     stream: ({ params }) => this.projectsService.get(params),
   });
 
-  protected readonly project = computed<Project | null>(() => this.resource.value() ?? null);
+  protected readonly project = computed<ProjectDetail | null>(() => this.resource.value() ?? null);
   protected readonly isLoading = computed(() => this.resource.isLoading());
   protected readonly hasError = computed(() => this.resource.error() !== undefined);
 

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import type { Project } from '@org/types';
+import type { Project, ProjectDetail } from '@org/types';
 import type { CreateProjectDto, UpdateProjectDto } from '@org/schemas';
 
 const PROJECTS_BASE = '/api/projects';
@@ -17,8 +17,8 @@ export class ProjectsService {
     return this.http.get<Project[]>(PROJECTS_BASE);
   }
 
-  get(id: string): Observable<Project> {
-    return this.http.get<Project>(`${PROJECTS_BASE}/${id}`);
+  get(id: string): Observable<ProjectDetail> {
+    return this.http.get<ProjectDetail>(`${PROJECTS_BASE}/${id}`);
   }
 
   create(dto: CreateProjectDto): Observable<Project> {
