@@ -3,7 +3,7 @@ import {
   Component,
   computed,
   inject,
-  signal,
+  linkedSignal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
@@ -19,6 +19,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 import type { CreateProjectDto } from '@org/schemas';
 import { ProjectsService } from '../../core/projects/projects.service';
+import { ProjectsSourceAoService } from '../../core/projects/projects-source-ao.service';
 import { ToastService } from '../../core/notifications/toast.service';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
@@ -75,13 +76,29 @@ const NAME_MAX_LENGTH = 100;
 })
 export class ProjectNewPage {
   private readonly projectsService = inject(ProjectsService);
+  private readonly sourceAoService = inject(ProjectsSourceAoService);
   private readonly toaster = inject(ToastService);
   private readonly router = inject(Router);
 
-  protected readonly model = signal<ProjectFormModel>(EMPTY_MODEL);
-  protected readonly sourceAoId = signal<string | null>(null);
-  protected readonly cctpText = signal<string | null>(null);
-  protected readonly cctpFilename = signal<string | null>(null);
+  private readonly prefill = computed(() => {
+    const nav = this.router.currentNavigation();
+    const state = nav?.extras.state ?? (typeof history !== 'undefined' ? history.state : null);
+    return extractPrefill(state);
+  });
+
+  protected readonly sourceAoId = computed(() => this.prefill()?.sourceAoId ?? null);
+  protected readonly cctpText = computed(() => this.prefill()?.cctpText ?? null);
+  protected readonly cctpFilename = computed(() => this.prefill()?.cctpFilename ?? null);
+
+  // Initialisé depuis le prefill au premier calcul ; les saisies utilisateur
+  // sont préservées lors des recomputations suivantes (navigation qui se termine).
+  protected readonly model = linkedSignal({
+    source: this.prefill,
+    computation: (prefill, previous): ProjectFormModel => {
+      if (previous !== undefined) return previous.value;
+      return buildModelFromPrefill(prefill);
+    },
+  });
 
   protected readonly projectForm = form(
     this.model,
@@ -116,6 +133,9 @@ export class ProjectNewPage {
           const dto = toCreateProjectDto(this.model(), this.sourceAoId());
           try {
             const project = await firstValueFrom(this.projectsService.create(dto));
+            if (dto.sourceAoId) {
+              this.sourceAoService.markAsImported(dto.sourceAoId, project.id);
+            }
             this.toaster.success({
               title: 'Projet créé',
               description: `« ${project.name} » est prêt à être configuré.`,
@@ -141,51 +161,21 @@ export class ProjectNewPage {
     () => this.projectForm().valid() && !this.projectForm().submitting(),
   );
 
-  constructor() {
-    const prefill = this.readPrefill();
-    if (prefill) {
-      this.applyPrefill(prefill);
-    }
-  }
-
   protected onSubmit(): void {
     void submit(this.projectForm);
   }
+}
 
-  /**
-   * Récupère le pré-remplissage transmis via `router state`.
-   *
-   * `router.getCurrentNavigation()` ne renvoie un `Navigation` que pendant
-   * la transition. Lorsque le composant est instancié après navigation
-   * (cas le plus fréquent), on retombe sur `history.state` qui Angular
-   * sérialise via `NavigationExtras.state`.
-   */
-  private readPrefill(): ProjectPrefill | null {
-    const fromNav = this.router.getCurrentNavigation()?.extras.state;
-    const fromHistory = typeof history !== 'undefined' ? history.state : null;
-    return extractPrefill(fromNav) ?? extractPrefill(fromHistory);
-  }
-
-  private applyPrefill(prefill: ProjectPrefill): void {
-    const truncatedName = prefill.name
-      ? prefill.name.length > NAME_MAX_LENGTH
-        ? `${prefill.name.slice(0, NAME_MAX_LENGTH)}…`
-        : prefill.name
-      : '';
-    const isoDate = prefill.deadline ? prefill.deadline.slice(0, 10) : '';
-
-    this.model.set({
-      ...EMPTY_MODEL,
-      name: truncatedName,
-      clientName: prefill.clientName ?? '',
-      marketObject: prefill.marketObject ?? '',
-      deadline: isoDate,
-    });
-
-    if (prefill.sourceAoId) this.sourceAoId.set(prefill.sourceAoId);
-    if (prefill.cctpText) this.cctpText.set(prefill.cctpText);
-    if (prefill.cctpFilename) this.cctpFilename.set(prefill.cctpFilename);
-  }
+function buildModelFromPrefill(prefill: ProjectPrefill | null): ProjectFormModel {
+  if (!prefill) return EMPTY_MODEL;
+  const name = prefill.name ?? '';
+  return {
+    ...EMPTY_MODEL,
+    name: name.length > NAME_MAX_LENGTH ? `${name.slice(0, NAME_MAX_LENGTH)}…` : name,
+    clientName: prefill.clientName ?? '',
+    marketObject: prefill.marketObject ?? '',
+    deadline: prefill.deadline ? prefill.deadline.slice(0, 10) : '',
+  };
 }
 
 function extractPrefill(state: unknown): ProjectPrefill | null {

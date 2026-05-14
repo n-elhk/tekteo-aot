@@ -8,6 +8,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import type { AoItem } from '../../../core/ao/ao.model';
 
@@ -28,7 +29,7 @@ const BADGE_BASE = 'text-xs px-2 py-0.5 rounded-full font-medium';
   selector: 'app-ao-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
-  imports: [CdkMenuTrigger, CdkMenu, CdkMenuItem, DatePipe],
+  imports: [RouterLink, CdkMenuTrigger, CdkMenu, CdkMenuItem, DatePipe],
   template: `
     <article
       class="group rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.25)]"
@@ -157,12 +158,25 @@ const BADGE_BASE = 'text-xs px-2 py-0.5 rounded-full font-medium';
       >
         <!-- Créer un projet -->
         @if (isImported()) {
-          <div class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-green-600">
-            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Projet créé
-          </div>
+          @if (projectId()) {
+            <a
+              cdkMenuItem
+              [routerLink]="['/projects', projectId()]"
+              class="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-green-600 hover:bg-green-50 transition"
+            >
+              <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Voir le projet
+            </a>
+          } @else {
+            <div class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-green-600">
+              <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Projet créé
+            </div>
+          }
         } @else {
           <button
             cdkMenuItem
@@ -258,6 +272,7 @@ export class AoCard {
   readonly isFavorite = input<boolean>(false);
   readonly favoriteBusy = input<boolean>(false);
   readonly isImported = input<boolean>(false);
+  readonly projectId = input<string | null>(null);
   readonly isNew = input<boolean>(false);
   readonly cctpBusy = input<boolean>(false);
 

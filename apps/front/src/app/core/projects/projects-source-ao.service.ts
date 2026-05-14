@@ -23,32 +23,36 @@ export class ProjectsSourceAoService {
     stream: () =>
       this.http.get<Project[]>(API).pipe(
         map((projects) => {
-          const ids = new Set<string>();
+          const map = new Map<string, string>();
           for (const project of projects) {
-            if (project.sourceAoId) ids.add(project.sourceAoId);
+            if (project.sourceAoId) map.set(project.sourceAoId, project.id);
           }
-          return ids as ReadonlySet<string>;
+          return map as ReadonlyMap<string, string>;
         }),
       ),
-    defaultValue: new Set<string>() as ReadonlySet<string>,
+    defaultValue: new Map<string, string>() as ReadonlyMap<string, string>,
   });
 
-  readonly importedIds = linkedSignal(() => this.importedResource.value());
+  readonly importedMap = linkedSignal(() => this.importedResource.value());
   readonly loaded = computed(() => this.importedResource.status() === 'resolved');
 
   /** Indicateur dérivé : pratique pour les templates `@if`. */
-  readonly importedCount = computed(() => this.importedIds().size);
+  readonly importedCount = computed(() => this.importedMap().size);
 
   isImported(aoId: string): boolean {
-    return this.importedIds().has(aoId);
+    return this.importedMap().has(aoId);
+  }
+
+  getProjectId(aoId: string): string | null {
+    return this.importedMap().get(aoId) ?? null;
   }
 
   /** Marque un AO comme importé sans nouvel appel HTTP (mise à jour optimiste). */
-  markAsImported(aoId: string): void {
-    this.importedIds.update((current) => {
+  markAsImported(aoId: string, projectId: string): void {
+    this.importedMap.update((current) => {
       if (current.has(aoId)) return current;
-      const next = new Set(current);
-      next.add(aoId);
+      const next = new Map(current);
+      next.set(aoId, projectId);
       return next;
     });
   }

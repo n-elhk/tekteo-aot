@@ -11,6 +11,7 @@ export interface AoListItem {
   readonly ao: AoItem;
   readonly isFavorite: boolean;
   readonly isImported: boolean;
+  readonly projectId: string | null;
   readonly isNew: boolean;
   readonly cctpBusy: boolean;
 }

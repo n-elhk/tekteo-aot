@@ -35,6 +35,7 @@ import type { AoListItem } from '../ao-list-item.model';
             [isFavorite]="item.isFavorite"
             [favoriteBusy]="false"
             [isImported]="item.isImported"
+            [projectId]="item.projectId"
             [isNew]="item.isNew"
             [cctpBusy]="item.cctpBusy"
             (favoriteToggled)="favoriteToggled.emit($event)"

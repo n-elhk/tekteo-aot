@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { filter, switchMap, tap } from 'rxjs';
-import type { ProjectDetail } from '@org/types';
+import type { Project, ProjectDetail } from '@org/types';
 import { ProjectsService } from '../../core/projects/projects.service';
 import { Dialog } from '@angular/cdk/dialog';
 import { APP_DIALOG_CONFIG } from '../../core/dialog/dialog.config';
@@ -16,6 +16,10 @@ import {
   ConfirmDialog,
   type ConfirmDialogData,
 } from '../../shared/ui/confirm-dialog/confirm-dialog';
+import {
+  ProjectEditDialog,
+  type ProjectEditDialogData,
+} from './project-edit-dialog';
 import { SectionsPanel } from '../sections/sections-panel';
 import { JobProfilesPanel } from '../job-profiles/job-profiles-panel';
 import { BpuPanel } from '../bpu/bpu-panel';
@@ -60,6 +64,16 @@ export class ProjectDetailPage {
   protected readonly project = computed<ProjectDetail | null>(() => this.resource.value() ?? null);
   protected readonly isLoading = computed(() => this.resource.isLoading());
   protected readonly hasError = computed(() => this.resource.error() !== undefined);
+
+  protected editProject(): void {
+    const project = this.project();
+    if (!project) return;
+    const ref = this.dialog.open<Project | null, ProjectEditDialogData, ProjectEditDialog>(
+      ProjectEditDialog,
+      { ...APP_DIALOG_CONFIG, data: { project } },
+    );
+    ref.closed.pipe(filter(Boolean)).subscribe(() => this.resource.reload());
+  }
 
   protected deleteProject(): void {
     const project = this.project();

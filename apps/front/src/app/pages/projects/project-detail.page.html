@@ -41,14 +41,6 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        @if (canEdit()) {
-          <app-button variant="secondary">
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5h2m-1 0v14m-7-7h14" />
-            </svg>
-            Modifier
-          </app-button>
-        }
         @if (isAdmin()) {
           <app-button variant="danger" (click)="deleteProject()">
             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -62,6 +54,19 @@
 
     <section class="grid gap-4 lg:grid-cols-3">
       <app-card title="Informations" class="lg:col-span-2">
+        @if (canEdit()) {
+          <button
+            cardAction
+            type="button"
+            (click)="editProject()"
+            aria-label="Modifier les informations du projet"
+            class="rounded-lg p-1.5 text-surface-900/40 hover:bg-surface-100 hover:text-surface-900 transition"
+          >
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+            </svg>
+          </button>
+        }
         <dl class="grid gap-4 sm:grid-cols-2">
           <div>
             <dt class="text-xs font-semibold uppercase tracking-wider text-surface-900/50">Client</dt>

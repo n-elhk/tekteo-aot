@@ -152,6 +152,7 @@ export class AoVeillePage {
       ao,
       isFavorite: this.favoritesService.isFavorite(ao.id),
       isImported: this.importedService.isImported(ao.id),
+      projectId: this.importedService.getProjectId(ao.id),
       isNew: this.isNew(ao),
       cctpBusy: this.cctpBusyId() === ao.id,
     };
