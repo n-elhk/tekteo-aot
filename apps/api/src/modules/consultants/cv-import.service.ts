@@ -83,7 +83,7 @@ export class CvImportService {
     consultantId: string,
     template: CvTemplateValue,
   ) {
-    const consultant = await this.prisma.consultantCv.findUnique({
+    const consultant = await this.prisma.consultant.findUnique({
       where: { id: consultantId },
       select: { id: true },
     });
