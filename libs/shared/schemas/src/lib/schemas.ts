@@ -393,6 +393,38 @@ export type CvCertification = z.infer<typeof cvCertificationSchema>;
 export type CvEducation = z.infer<typeof cvEducationSchema>;
 export type CvExperience = z.infer<typeof cvExperienceSchema>;
 
+// ============================================================
+// Consultant schemas
+// ============================================================
+
+export const createConsultantSchema = z.object({
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  email: z.string().email(),
+  phone: z.string().max(50).optional(),
+  role: z.string().max(200).optional(),
+  yearsExperience: z.number().int().min(0).max(80).optional(),
+  location: z.string().max(200).optional(),
+  masterCvData: cvDataSchema,
+});
+export type CreateConsultantDto = z.infer<typeof createConsultantSchema>;
+
+export const updateConsultantSchema = createConsultantSchema.partial();
+export type UpdateConsultantDto = z.infer<typeof updateConsultantSchema>;
+
+export const importConsultantFromTextSchema = z.object({
+  cvText: z.string().min(50).max(50000),
+  model: z.string().min(2).max(80).optional(),
+  persist: z.boolean().default(true),
+});
+export type ImportConsultantFromTextDto = z.infer<typeof importConsultantFromTextSchema>;
+
+export const consultantsListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type ConsultantsListQueryDto = z.infer<typeof consultantsListQuerySchema>;
+
 export const createConsultantCvSchema = z.object({
   cvData: cvDataSchema,
   consultantName: z
