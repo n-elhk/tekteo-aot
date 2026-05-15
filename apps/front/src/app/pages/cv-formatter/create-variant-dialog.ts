@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, inject, signal, computed } from '@a
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
+import { ModalShell } from '../../shared/ui/modal-shell/modal-shell';
+import { Button } from '../../shared/ui/button/button';
 import type { CreateCvVariantDto } from '../../core/cv-variants/cv-variant.model';
 import type { CvTemplateValue } from '@org/schemas';
 
@@ -18,54 +20,53 @@ export interface CreateVariantDialogData {
 @Component({
   selector: 'app-create-variant-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ModalShell, Button],
   template: `
-    <div class="p-6 w-[480px] flex flex-col gap-4">
-      <h2 class="text-xl font-semibold">Nouvelle variante de CV</h2>
-      <p class="text-sm text-gray-500">Consultant : {{ data.consultantLabel }}</p>
+    <app-modal-shell
+      title="Nouvelle variante de CV"
+      [subtitle]="'Consultant : ' + data.consultantLabel"
+    >
+      <div class="flex flex-col gap-4">
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Fiche de poste</span>
+          <select class="border rounded p-2" [value]="jobProfileId()" (change)="onJobChange($event)">
+            <option value="">— Sélectionner —</option>
+            @for (j of jobs(); track j.id) {
+              <option [value]="j.id">{{ j.title }}</option>
+            }
+          </select>
+        </label>
 
-      <label class="flex flex-col gap-1">
-        <span class="text-sm font-medium">Fiche de poste</span>
-        <select class="border rounded p-2" [value]="jobProfileId()" (change)="onJobChange($event)">
-          <option value="">— Sélectionner —</option>
-          @for (j of jobs(); track j.id) {
-            <option [value]="j.id">{{ j.title }}</option>
-          }
-        </select>
-      </label>
-
-      <div class="flex flex-col gap-1">
-        <span class="text-sm font-medium">Template</span>
-        <div class="flex gap-4">
-          <label class="flex items-center gap-2">
-            <input type="radio" name="tpl" value="tekteo" [checked]="template() === 'tekteo'" (change)="template.set('tekteo')" />
-            Tekteo
-          </label>
-          <label class="flex items-center gap-2">
-            <input type="radio" name="tpl" value="anonyme" [checked]="template() === 'anonyme'" (change)="template.set('anonyme')" />
-            Anonyme
-          </label>
+        <div class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Template</span>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2">
+              <input type="radio" name="tpl" value="tekteo" [checked]="template() === 'tekteo'" (change)="template.set('tekteo')" />
+              Tekteo
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="tpl" value="anonyme" [checked]="template() === 'anonyme'" (change)="template.set('anonyme')" />
+              Anonyme
+            </label>
+          </div>
         </div>
+
+        <label class="flex flex-col gap-1">
+          <span class="text-sm font-medium">Nom (optionnel)</span>
+          <input
+            class="border rounded p-2"
+            [placeholder]="autoNamePreview()"
+            [value]="name()"
+            (input)="name.set(($any($event.target).value))"
+          />
+        </label>
       </div>
 
-      <label class="flex flex-col gap-1">
-        <span class="text-sm font-medium">Nom (optionnel)</span>
-        <input
-          class="border rounded p-2"
-          [placeholder]="autoNamePreview()"
-          [value]="name()"
-          (input)="name.set(($any($event.target).value))"
-        />
-      </label>
-
-      <div class="flex justify-end gap-2 pt-2">
-        <button class="px-3 py-2 rounded border" (click)="cancel()">Annuler</button>
-        <button
-          class="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
-          [disabled]="!canSubmit()"
-          (click)="submit()"
-        >Créer</button>
+      <div modalFooter class="flex justify-end gap-2">
+        <app-button variant="ghost" (click)="cancel()">Annuler</app-button>
+        <app-button variant="primary" [disabled]="!canSubmit()" (click)="submit()">Créer</app-button>
       </div>
-    </div>
+    </app-modal-shell>
   `,
 })
 export class CreateVariantDialog {

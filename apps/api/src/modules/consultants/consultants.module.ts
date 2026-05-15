@@ -8,9 +8,10 @@ import { CvImportProcessor } from './cv-import.processor';
 import { TemplateFillerService } from './template-filler.service';
 import { PdfRendererService } from './pdf-renderer.service';
 import { CV_IMPORT_QUEUE } from '../../common/queue/queue.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: CV_IMPORT_QUEUE })],
+  imports: [BullModule.registerQueue({ name: CV_IMPORT_QUEUE }), AuthModule],
   controllers: [ConsultantsController],
   providers: [
     ConsultantsService,

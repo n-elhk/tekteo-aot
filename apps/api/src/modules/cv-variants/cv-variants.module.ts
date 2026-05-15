@@ -4,9 +4,10 @@ import { CvVariantsService } from './cv-variants.service';
 import { CvVariantPdfService } from './cv-variant-pdf.service';
 import { GeneratedCvsService } from './generated-cvs.service';
 import { ConsultantsModule } from '../consultants/consultants.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [ConsultantsModule],
+  imports: [ConsultantsModule, AuthModule],
   controllers: [CvVariantsController],
   providers: [
     CvVariantsService,
