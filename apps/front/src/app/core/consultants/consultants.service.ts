@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import type { CvTemplateValue } from '@org/schemas';
 import type {
   Consultant,
   ConsultantsList,
@@ -8,6 +10,19 @@ import type {
   UpdateConsultantDto,
   ImportConsultantFromTextDto,
 } from './consultant.model';
+
+export interface ConsultantImportFileJob {
+  readonly jobId: string;
+  readonly status: string;
+}
+
+export interface ConsultantImportJobEvent {
+  readonly status: string;
+  readonly consultantId?: string | null;
+  readonly error?: string | null;
+  readonly kind?: string;
+  readonly template?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class ConsultantsService {
@@ -41,5 +56,35 @@ export class ConsultantsService {
       `${this.baseUrl}/import/text`,
       dto,
     );
+  }
+
+  importFromFile(files: File[], template: CvTemplateValue) {
+    const formData = new FormData();
+    for (const f of files) formData.append('files', f);
+    formData.append('template', template);
+    return this.http.post<{ jobs: ConsultantImportFileJob[] }>(
+      `${this.baseUrl}/import/file`,
+      formData,
+    );
+  }
+
+  watchImportJob(jobId: string): Observable<ConsultantImportJobEvent> {
+    return new Observable<ConsultantImportJobEvent>((subscriber) => {
+      const source = new EventSource(
+        `${this.baseUrl}/import-jobs/${jobId}/events`,
+      );
+      source.onmessage = (msg) => {
+        try {
+          subscriber.next(JSON.parse(msg.data) as ConsultantImportJobEvent);
+        } catch {
+          /* ignore */
+        }
+      };
+      source.onerror = (err) => {
+        subscriber.error(err);
+        source.close();
+      };
+      return () => source.close();
+    });
   }
 }
