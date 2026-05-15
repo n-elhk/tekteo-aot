@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   signalStore,
   withState,
@@ -40,6 +40,7 @@ export const ConsultantDetailsStore = signalStore(
     _consultantsApi: inject(ConsultantsService),
     _variantsApi: inject(CvVariantsService),
     _route: inject(ActivatedRoute),
+    _router: inject(Router),
   })),
   withMethods((store) => ({
     load: rxMethod<string>(
@@ -156,6 +157,28 @@ export const ConsultantDetailsStore = signalStore(
                     err instanceof Error
                       ? err.message
                       : 'Erreur de suppression',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
+    deleteConsultant: rxMethod<void>(
+      pipe(
+        map(() => store.consultant()),
+        filter(Boolean),
+        switchMap((c) =>
+          store._consultantsApi.remove(c.id).pipe(
+            tapResponse({
+              next: () => {
+                void store._router.navigate(['/consultants']);
+              },
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de suppression du consultant',
                 }),
             }),
           ),
