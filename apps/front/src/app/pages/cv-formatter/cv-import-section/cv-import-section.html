@@ -60,7 +60,7 @@
           </div>
           @if (entry.consultantId && entry.status === 'done') {
             <a
-              [routerLink]="['/cv', entry.consultantId]"
+              [routerLink]="['/cv-formatter', 'consultants', entry.consultantId]"
               class="text-xs font-medium text-brand-700 hover:underline"
             >
               Voir →

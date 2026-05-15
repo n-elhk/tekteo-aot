@@ -22,11 +22,11 @@ import {
   takeWhile,
   tap,
 } from 'rxjs';
-import { ConsultantCvsService } from '../../../core/consultant-cvs/consultant-cvs.service';
-import type {
-  CvJobEventDto,
-  CvTemplateValue,
-} from '../../../core/consultant-cvs/consultant-cv.model';
+import type { CvTemplateValue } from '@org/schemas';
+import {
+  ConsultantsService,
+  type ConsultantImportJobEvent,
+} from '../../../core/consultants/consultants.service';
 import { ToastService } from '../../../core/notifications/toast.service';
 import { Button } from '../../../shared/ui/button/button';
 import { FileDropzone } from '../../../shared/ui/file-dropzone/file-dropzone';
@@ -78,7 +78,7 @@ type JobPatches = Readonly<Record<string, JobPatch>>;
   templateUrl: './cv-import-section.html',
 })
 export class CvImportSection {
-  private readonly cvsService = inject(ConsultantCvsService);
+  private readonly consultants = inject(ConsultantsService);
   private readonly toaster = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -104,7 +104,7 @@ export class CvImportSection {
         }
         return merge(
           ...jobs.map(({ jobId, localId }) =>
-            this.cvsService.watchImportJob(jobId).pipe(
+            this.consultants.watchImportJob(jobId).pipe(
               map((update) => ({ localId, patch: toJobPatch(update) })),
               takeWhile(
                 ({ patch }) =>
@@ -243,8 +243,8 @@ export class CvImportSection {
     this.running.set(true);
     this.jobsToWatch.set([]);
 
-    this.cvsService
-      .importMultipleFiles(files, this.template())
+    this.consultants
+      .importFromFile(files, this.template())
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         tap(({ jobs }) => {
@@ -299,7 +299,7 @@ export class CvImportSection {
 // Helpers purs
 // -----------------------------------------------------------
 
-function toJobPatch(update: Partial<CvJobEventDto>): JobPatch {
+function toJobPatch(update: Partial<ConsultantImportJobEvent>): JobPatch {
   const patch: { -readonly [K in keyof JobPatch]: JobPatch[K] } = {};
   if (update.status) {
     patch.status = update.status as FileStatus;
