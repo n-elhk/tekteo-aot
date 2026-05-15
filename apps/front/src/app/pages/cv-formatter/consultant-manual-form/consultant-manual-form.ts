@@ -13,14 +13,14 @@ import {
   FormField,
   FormRoot,
   maxLength,
-  minLength,
   required,
   submit,
   validate,
 } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
-import type { CreateConsultantCvDto } from '../../../core/consultant-cvs/consultant-cv.model';
-import { ConsultantCvsService } from '../../../core/consultant-cvs/consultant-cvs.service';
+import { Router } from '@angular/router';
+import type { CreateConsultantDto } from '@org/schemas';
+import { ConsultantsService } from '../../../core/consultants/consultants.service';
 import { ToastService } from '../../../core/notifications/toast.service';
 import { Button } from '../../../shared/ui/button/button';
 
@@ -54,6 +54,7 @@ interface FormState {
   role: string;
   email: string;
   phone: string;
+  yearsExperience: number | null;
   location: string;
   summary: string;
   skills: string[];
@@ -70,6 +71,7 @@ const EMPTY_STATE: FormState = {
   role: '',
   email: '',
   phone: '',
+  yearsExperience: null,
   location: '',
   summary: '',
   skills: [],
@@ -92,8 +94,9 @@ const blankOnly = (value: string) =>
   templateUrl: './consultant-manual-form.html',
 })
 export class ConsultantManualForm {
-  private readonly cvsService = inject(ConsultantCvsService);
+  private readonly consultants = inject(ConsultantsService);
   private readonly toaster = inject(ToastService);
+  private readonly router = inject(Router);
 
   readonly created = output<void>();
 
@@ -103,18 +106,22 @@ export class ConsultantManualForm {
     this.model,
     (path) => {
       required(path.firstName, { message: 'Prénom requis' });
-      maxLength(path.firstName, 80, { message: 'Au maximum 80 caractères' });
+      maxLength(path.firstName, 100, { message: 'Au maximum 100 caractères' });
       validate(path.firstName, ({ value }) => blankOnly(value()));
 
       required(path.lastName, { message: 'Nom requis' });
-      maxLength(path.lastName, 80, { message: 'Au maximum 80 caractères' });
+      maxLength(path.lastName, 100, { message: 'Au maximum 100 caractères' });
       validate(path.lastName, ({ value }) => blankOnly(value()));
 
-      required(path.role, { message: "L'intitulé du poste est requis" });
-      minLength(path.role, 2, { message: 'Au moins 2 caractères' });
-      maxLength(path.role, 150, { message: 'Au maximum 150 caractères' });
+      maxLength(path.role, 200, { message: 'Au maximum 200 caractères' });
+      validate(path.role, ({ value }) =>
+        value() && value().length < 2
+          ? { kind: 'min', message: 'Au moins 2 caractères' }
+          : undefined,
+      );
       validate(path.role, ({ value }) => blankOnly(value()));
 
+      required(path.email, { message: 'Email requis' });
       email(path.email, { message: 'Adresse e-mail invalide' });
       maxLength(path.email, 200, { message: 'Au maximum 200 caractères' });
       maxLength(path.phone, 50, { message: 'Au maximum 50 caractères' });
@@ -157,13 +164,20 @@ export class ConsultantManualForm {
       submission: {
         action: async () => {
           try {
-            await firstValueFrom(this.cvsService.create(this.buildDto()));
+            const consultant = await firstValueFrom(
+              this.consultants.create(this.buildDto()),
+            );
             this.toaster.success({
               title: 'Consultant créé',
               description: this.fullName(),
             });
             this.model.set(structuredClone(EMPTY_STATE));
             this.created.emit();
+            await this.router.navigate([
+              '/cv-formatter',
+              'consultants',
+              consultant.id,
+            ]);
             return undefined;
           } catch (err: unknown) {
             this.toaster.error({
@@ -269,19 +283,29 @@ export class ConsultantManualForm {
     void submit(this.consultantForm);
   }
 
-  private buildDto(): CreateConsultantCvDto {
+  private buildDto(): CreateConsultantDto {
     const s = this.model();
-    return {
-      consultantName: this.fullName(),
-      consultantTitle: s.role.trim(),
-      cvData: {
+    const role = s.role.trim();
+    const phone = s.phone.trim();
+    const location = s.location.trim();
+    const dto: CreateConsultantDto = {
+      firstName: s.firstName.trim(),
+      lastName: s.lastName.trim(),
+      email: s.email.trim(),
+      ...(phone ? { phone } : {}),
+      ...(role ? { role } : {}),
+      ...(s.yearsExperience !== null
+        ? { yearsExperience: s.yearsExperience }
+        : {}),
+      ...(location ? { location } : {}),
+      masterCvData: {
         identity: {
           firstName: s.firstName.trim(),
           lastName: s.lastName.trim(),
-          role: s.role.trim(),
+          role,
           email: s.email.trim(),
-          phone: s.phone.trim(),
-          location: s.location.trim(),
+          phone,
+          location,
           summary: s.summary.trim(),
         },
         skills: s.skills.map((name) => ({ name })),
@@ -292,6 +316,7 @@ export class ConsultantManualForm {
         experiences: s.experiences,
       },
     };
+    return dto;
   }
 }
 
