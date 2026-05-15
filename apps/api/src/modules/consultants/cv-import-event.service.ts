@@ -7,6 +7,8 @@ export interface CvJobUpdate {
   error?: string | null;
   cvId?: string | null;
   downloadUrl?: string | null;
+  consultantId?: string | null;
+  generatedCvId?: string | null;
 }
 
 @Injectable()
