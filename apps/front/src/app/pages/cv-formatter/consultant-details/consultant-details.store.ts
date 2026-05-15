@@ -10,7 +10,7 @@ import {
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
-import { EMPTY, filter, forkJoin, map, pipe, switchMap } from 'rxjs';
+import { filter, forkJoin, map, pipe, switchMap } from 'rxjs';
 import { ConsultantsService } from '../../../core/consultants/consultants.service';
 import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import type { Consultant } from '../../../core/consultants/consultant.model';
@@ -69,10 +69,13 @@ export const ConsultantDetailsStore = signalStore(
     ),
     createVariant: rxMethod<CreateCvVariantDto>(
       pipe(
-        switchMap((dto) => {
+        map((dto) => {
           const consultant = store.consultant();
-          if (!consultant) return EMPTY;
-          return store._variantsApi.create(consultant.id, dto).pipe(
+          return consultant ? { dto, consultantId: consultant.id } : null;
+        }),
+        filter(Boolean),
+        switchMap(({ dto, consultantId }) =>
+          store._variantsApi.create(consultantId, dto).pipe(
             tapResponse({
               next: ({ variant }) =>
                 patchState(store, {
@@ -86,8 +89,8 @@ export const ConsultantDetailsStore = signalStore(
                       : 'Erreur de création de variante',
                 }),
             }),
-          );
-        }),
+          ),
+        ),
       ),
     ),
     regenerateVariant: rxMethod<string>(
