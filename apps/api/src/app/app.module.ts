@@ -8,7 +8,8 @@ import { AoFavoritesModule } from '../modules/ao-favorites/ao-favorites.module';
 import { AoModule } from '../modules/ao/ao.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { BpuModule } from '../modules/bpu/bpu.module';
-import { ConsultantCvsModule } from '../modules/consultant-cvs/consultant-cvs.module';
+import { ConsultantsModule } from '../modules/consultants/consultants.module';
+import { CvVariantsModule } from '../modules/cv-variants/cv-variants.module';
 import { DashboardModule } from '../modules/dashboard/dashboard.module';
 import { GenerationHistoryModule } from '../modules/generation-history/generation-history.module';
 import { JobProfilesModule } from '../modules/job-profiles/job-profiles.module';
@@ -41,7 +42,8 @@ import { UsersModule } from '../modules/users/users.module';
     BpuModule,
     PricingGridsModule,
     ProjectDocumentsModule,
-    ConsultantCvsModule,
+    ConsultantsModule,
+    CvVariantsModule,
     AoModule,
     AoFavoritesModule,
     DashboardModule,
