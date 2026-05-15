@@ -5,7 +5,7 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "b7764c591c965d85f95f1d4f6d3620b6ab92a1b1fedbcdead7d59e946fc3fd2e"
+      "computedHash": "c5d9759b9e39a49a382dedda3bb4b79a9d952c9d1aedbf07905272baa0e389ab"
     },
     "angular-new-app": {
       "source": "angular/skills",
@@ -23,7 +23,7 @@
       "source": "nrwl/nx-ai-agents-config",
       "sourceType": "github",
       "skillPath": "skills/nx-generate/SKILL.md",
-      "computedHash": "7f465f7c7b023762c4517227a5ac9823f54d49fb5b492c61693d841a1a0ee355"
+      "computedHash": "25ec66443e8c7b3bc9da349e7a168e1071351cc14217adafe2dfab31c9860f61"
     },
     "nx-import": {
       "source": "nrwl/nx-ai-agents-config",
