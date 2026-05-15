@@ -1,0 +1,816 @@
+<div class="space-y-6">
+  <a
+    [routerLink]="backLink()"
+    class="inline-flex items-center gap-1.5 text-sm font-medium text-surface-900/60 hover:text-brand-700 transition"
+  >
+    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+    Retour au consultant
+  </a>
+
+  @if (store.loading()) {
+    <div class="space-y-3">
+      <div class="h-8 w-2/3 animate-pulse rounded-xl bg-surface-100"></div>
+      <div class="h-32 animate-pulse rounded-2xl bg-surface-100"></div>
+      <div class="h-32 animate-pulse rounded-2xl bg-surface-100"></div>
+    </div>
+  } @else if (store.error(); as err) {
+    <div class="surface-card rounded-2xl p-6 text-center" role="alert">
+      <p class="font-semibold text-surface-900">Variante introuvable</p>
+      <p class="mt-1 text-sm text-surface-900/60">{{ err }}</p>
+    </div>
+  } @else if (store.variant(); as v) {
+    <!-- Hero header -->
+    <section class="surface-card rounded-2xl p-6 lg:p-8">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex-1 space-y-2">
+          <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+            Variante de CV
+          </p>
+          <input
+            type="text"
+            [value]="nameDraft()"
+            (input)="nameDraft.set($any($event.target).value)"
+            (blur)="saveName()"
+            aria-label="Nom de la variante"
+            class="w-full rounded-xl border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight text-surface-900 hover:border-surface-200 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+          />
+          <p class="text-sm text-surface-900/70">
+            Fiche : <span class="font-medium text-surface-900">{{ v.jobProfile.title }}</span>
+            · Template : <span class="font-medium text-surface-900">{{ v.template }}</span>
+          </p>
+          <p class="text-xs text-surface-900/40">
+            Dernière mise à jour le {{ v.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}
+          </p>
+        </div>
+        <div class="flex shrink-0 items-start gap-2">
+          <app-button variant="secondary" (click)="store.regenerate()">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0014.65-3.36M19 5A9 9 0 004.35 8.36" />
+            </svg>
+            Régénérer (IA)
+          </app-button>
+          <app-button variant="primary" (click)="store.triggerPdf()">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+            </svg>
+            Générer PDF
+          </app-button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CV form -->
+    <form
+      [formRoot]="cvForm"
+      (submit)="onSubmit()"
+      novalidate
+      class="space-y-4"
+    >
+      <!-- Identité -->
+      <details
+        open
+        class="overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm"
+      >
+        <summary class="cursor-pointer list-none px-6 py-4 hover:bg-surface-50 transition">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                Identité
+              </p>
+              <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Profil & contact</h2>
+            </div>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-surface-900/40 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </summary>
+        <div class="border-t border-surface-100 p-6">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="block">
+              <span class="text-xs text-surface-900/70">Prénom</span>
+              <input
+                type="text"
+                [formField]="cvForm.identity.firstName"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs text-surface-900/70">Nom</span>
+              <input
+                type="text"
+                [formField]="cvForm.identity.lastName"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs text-surface-900/70">Initiales</span>
+              <input
+                type="text"
+                [formField]="cvForm.identity.initials"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs text-surface-900/70">Intitulé du poste</span>
+              <input
+                type="text"
+                placeholder="Ex : Tech Lead Java"
+                [formField]="cvForm.identity.role"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="text-xs text-surface-900/70">Sous-titre</span>
+              <input
+                type="text"
+                [formField]="cvForm.identity.subtitle"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="text-xs text-surface-900/70">Résumé / pitch</span>
+              <textarea
+                rows="4"
+                [formField]="cvForm.identity.summary"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              ></textarea>
+            </label>
+            <label class="block">
+              <span class="text-xs text-surface-900/70">Email</span>
+              <input
+                type="email"
+                [formField]="cvForm.identity.email"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs text-surface-900/70">Téléphone</span>
+              <input
+                type="tel"
+                [formField]="cvForm.identity.phone"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs text-surface-900/70">Localisation</span>
+              <input
+                type="text"
+                [formField]="cvForm.identity.location"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs text-surface-900/70">LinkedIn</span>
+              <input
+                type="url"
+                placeholder="https://linkedin.com/in/…"
+                [formField]="cvForm.identity.linkedin"
+                class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <!-- Compétences -->
+      <details class="overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm">
+        <summary class="cursor-pointer list-none px-6 py-4 hover:bg-surface-50 transition">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                {{ model().skills.length }} entrée{{ model().skills.length > 1 ? 's' : '' }}
+              </p>
+              <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Compétences</h2>
+            </div>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </summary>
+        <div class="border-t border-surface-100 p-6 space-y-2">
+          @for (skillField of cvForm.skills; track $index; let i = $index) {
+            <div class="grid gap-2 sm:grid-cols-[1fr_120px_auto] items-start">
+              <input
+                type="text"
+                placeholder="Nom de la compétence"
+                [formField]="skillField.name"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <label class="block">
+                <input
+                  type="number"
+                  step="1"
+                  placeholder="Niveau /5"
+                  [formField]="skillField.level"
+                  class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                />
+                @if (skillField.level().touched() && skillField.level().errors().length > 0) {
+                  <span class="mt-1 block text-xs font-medium text-red-600">
+                    {{ skillField.level().errors()[0].message }}
+                  </span>
+                }
+              </label>
+              <button
+                type="button"
+                (click)="removeSkill(i)"
+                class="self-center rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+              >
+                Retirer
+              </button>
+            </div>
+          } @empty {
+            <p class="text-sm text-surface-900/50">Aucune compétence.</p>
+          }
+          <button
+            type="button"
+            (click)="addSkill()"
+            class="text-xs font-medium text-brand-700 hover:text-brand-800"
+          >
+            + Ajouter une compétence
+          </button>
+        </div>
+      </details>
+
+      <!-- Outils -->
+      <details class="overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm">
+        <summary class="cursor-pointer list-none px-6 py-4 hover:bg-surface-50 transition">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                {{ model().tools.length }} outil{{ model().tools.length > 1 ? 's' : '' }}
+              </p>
+              <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Outils</h2>
+            </div>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </summary>
+        <div class="border-t border-surface-100 p-6 space-y-3">
+          <div class="flex flex-wrap gap-2">
+            @for (tool of model().tools; track $index; let i = $index) {
+              <span class="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2.5 py-1 text-xs text-surface-900">
+                {{ tool }}
+                <button
+                  type="button"
+                  (click)="removeTool(i)"
+                  aria-label="Retirer l'outil"
+                  class="ml-1 text-surface-900/60 hover:text-red-600"
+                >
+                  &times;
+                </button>
+              </span>
+            }
+          </div>
+          <input
+            type="text"
+            placeholder="Tapez puis Entrée pour ajouter…"
+            (keydown.enter)="$event.preventDefault(); addTool($any($event.target).value); $any($event.target).value=''"
+            class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+          />
+        </div>
+      </details>
+
+      <!-- Langues -->
+      <details class="overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm">
+        <summary class="cursor-pointer list-none px-6 py-4 hover:bg-surface-50 transition">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                {{ model().languages.length }} langue{{ model().languages.length > 1 ? 's' : '' }}
+              </p>
+              <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Langues</h2>
+            </div>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </summary>
+        <div class="border-t border-surface-100 p-6 space-y-2">
+          @for (langField of cvForm.languages; track $index; let i = $index) {
+            <div class="grid gap-2 sm:grid-cols-[2fr_2fr_100px_auto] items-start">
+              <input
+                type="text"
+                placeholder="Langue (ex : Anglais)"
+                [formField]="langField.name"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Niveau (ex : Courant — C1)"
+                [formField]="langField.levelLabel"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <input
+                type="number"
+                step="1"
+                placeholder="Dots /5"
+                [formField]="langField.dots"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <button
+                type="button"
+                (click)="removeLanguage(i)"
+                class="self-center rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+              >
+                Retirer
+              </button>
+            </div>
+          } @empty {
+            <p class="text-sm text-surface-900/50">Aucune langue.</p>
+          }
+          <button
+            type="button"
+            (click)="addLanguage()"
+            class="text-xs font-medium text-brand-700 hover:text-brand-800"
+          >
+            + Ajouter une langue
+          </button>
+        </div>
+      </details>
+
+      <!-- Certifications -->
+      <details class="overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm">
+        <summary class="cursor-pointer list-none px-6 py-4 hover:bg-surface-50 transition">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                {{ model().certifications.length }} certification{{ model().certifications.length > 1 ? 's' : '' }}
+              </p>
+              <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Certifications</h2>
+            </div>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </summary>
+        <div class="border-t border-surface-100 p-6 space-y-2">
+          @for (certField of cvForm.certifications; track $index; let i = $index) {
+            <div class="grid gap-2 sm:grid-cols-[3fr_1fr_auto] items-start">
+              <input
+                type="text"
+                placeholder="Nom de la certification"
+                [formField]="certField.name"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Année"
+                [formField]="certField.year"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <button
+                type="button"
+                (click)="removeCertification(i)"
+                class="self-center rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+              >
+                Retirer
+              </button>
+            </div>
+          } @empty {
+            <p class="text-sm text-surface-900/50">Aucune certification.</p>
+          }
+          <button
+            type="button"
+            (click)="addCertification()"
+            class="text-xs font-medium text-brand-700 hover:text-brand-800"
+          >
+            + Ajouter une certification
+          </button>
+        </div>
+      </details>
+
+      <!-- Formation -->
+      <details class="overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm">
+        <summary class="cursor-pointer list-none px-6 py-4 hover:bg-surface-50 transition">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                {{ model().education.length }} diplôme{{ model().education.length > 1 ? 's' : '' }}
+              </p>
+              <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Formation</h2>
+            </div>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </summary>
+        <div class="border-t border-surface-100 p-6 space-y-2">
+          @for (eduField of cvForm.education; track $index; let i = $index) {
+            <div class="grid gap-2 sm:grid-cols-[2fr_2fr_1fr_auto] items-start">
+              <input
+                type="text"
+                placeholder="Diplôme"
+                [formField]="eduField.degree"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="École / Université"
+                [formField]="eduField.school"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Année"
+                [formField]="eduField.year"
+                class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+              />
+              <button
+                type="button"
+                (click)="removeEducation(i)"
+                class="self-center rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+              >
+                Retirer
+              </button>
+            </div>
+          } @empty {
+            <p class="text-sm text-surface-900/50">Aucune formation.</p>
+          }
+          <button
+            type="button"
+            (click)="addEducation()"
+            class="text-xs font-medium text-brand-700 hover:text-brand-800"
+          >
+            + Ajouter une formation
+          </button>
+        </div>
+      </details>
+
+      <!-- Expériences -->
+      <details class="overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm">
+        <summary class="cursor-pointer list-none px-6 py-4 hover:bg-surface-50 transition">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                {{ model().experiences.length }} expérience{{ model().experiences.length > 1 ? 's' : '' }}
+              </p>
+              <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Expériences</h2>
+            </div>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </summary>
+        <div class="border-t border-surface-100 p-6 space-y-4">
+          @for (expField of cvForm.experiences; track $index; let i = $index) {
+            <div class="rounded-xl border border-surface-200/70 bg-surface-50/60 p-4 space-y-3">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-xs font-medium uppercase tracking-wider text-surface-900/50">
+                  Expérience #{{ i + 1 }}
+                </p>
+                <button
+                  type="button"
+                  (click)="removeExperience(i)"
+                  class="rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition"
+                >
+                  Retirer
+                </button>
+              </div>
+
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="block">
+                  <span class="text-xs text-surface-900/70">Rôle / Titre</span>
+                  <input
+                    type="text"
+                    [formField]="expField.role"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-surface-900/70">Entreprise / Client</span>
+                  <input
+                    type="text"
+                    [formField]="expField.company"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  />
+                </label>
+                <label class="block sm:col-span-2">
+                  <span class="text-xs text-surface-900/70">Méta-client (secteur, projet…)</span>
+                  <input
+                    type="text"
+                    [formField]="expField.clientMeta"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-surface-900/70">Date de début</span>
+                  <input
+                    type="text"
+                    placeholder="Ex : Jan 2022"
+                    [formField]="expField.dateStart"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-surface-900/70">Date de fin</span>
+                  <input
+                    type="text"
+                    placeholder="Ex : Présent"
+                    [formField]="expField.dateEnd"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-surface-900/70">Durée</span>
+                  <input
+                    type="text"
+                    placeholder="Ex : 18 mois"
+                    [formField]="expField.duration"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-surface-900/70">Lieu</span>
+                  <input
+                    type="text"
+                    [formField]="expField.location"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  />
+                </label>
+                <label class="block sm:col-span-2">
+                  <span class="text-xs text-surface-900/70">Mission / Description</span>
+                  <textarea
+                    rows="3"
+                    [formField]="expField.mission"
+                    class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                  ></textarea>
+                </label>
+              </div>
+
+              <!-- Contexte -->
+              <details class="rounded-xl border border-surface-200/70 bg-white">
+                <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-surface-900 hover:bg-surface-50 transition">
+                  Contexte
+                </summary>
+                <div class="border-t border-surface-100 p-4 grid gap-3 sm:grid-cols-2">
+                  <label class="block">
+                    <span class="text-xs text-surface-900/70">Équipe</span>
+                    <input
+                      type="text"
+                      [formField]="expField.context.team"
+                      class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                    />
+                  </label>
+                  <label class="block">
+                    <span class="text-xs text-surface-900/70">Méthodologie</span>
+                    <input
+                      type="text"
+                      placeholder="Ex : Scrum"
+                      [formField]="expField.context.methodology"
+                      class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                    />
+                  </label>
+                  <label class="block">
+                    <span class="text-xs text-surface-900/70">Rôle dans le contexte</span>
+                    <input
+                      type="text"
+                      [formField]="expField.context.role"
+                      class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                    />
+                  </label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="block">
+                      <span class="text-xs text-surface-900/70">Champ libre (libellé)</span>
+                      <input
+                        type="text"
+                        [formField]="expField.context.extraLabel"
+                        class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                    </label>
+                    <label class="block">
+                      <span class="text-xs text-surface-900/70">Champ libre (valeur)</span>
+                      <input
+                        type="text"
+                        [formField]="expField.context.extraValue"
+                        class="mt-1 block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <!-- Activités -->
+              <details class="rounded-xl border border-surface-200/70 bg-white">
+                <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-surface-900 hover:bg-surface-50 transition">
+                  Activités ({{ model().experiences[i].activities.length }})
+                </summary>
+                <div class="border-t border-surface-100 p-4 space-y-2">
+                  @for (actField of expField.activities; track $index; let j = $index) {
+                    <div class="grid gap-2 sm:grid-cols-[1fr_2fr_auto] items-start">
+                      <input
+                        type="text"
+                        placeholder="Mot-clé / en-tête (gras)"
+                        [formField]="actField.bold"
+                        class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Description de l'activité"
+                        [formField]="actField.text"
+                        class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        (click)="removeActivity(i, j)"
+                        class="self-center rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  } @empty {
+                    <p class="text-sm text-surface-900/50">Aucune activité.</p>
+                  }
+                  <button
+                    type="button"
+                    (click)="addActivity(i)"
+                    class="text-xs font-medium text-brand-700 hover:text-brand-800"
+                  >
+                    + Ajouter une activité
+                  </button>
+                </div>
+              </details>
+
+              <!-- Résultats -->
+              <details class="rounded-xl border border-surface-200/70 bg-white">
+                <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-surface-900 hover:bg-surface-50 transition">
+                  Résultats ({{ model().experiences[i].results.length }})
+                </summary>
+                <div class="border-t border-surface-100 p-4 space-y-2">
+                  @for (resField of expField.results; track $index; let j = $index) {
+                    <div class="grid gap-2 sm:grid-cols-[1fr_2fr_auto] items-start">
+                      <input
+                        type="text"
+                        placeholder="Valeur (ex : -30 %)"
+                        [formField]="resField.value"
+                        class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Libellé du résultat"
+                        [formField]="resField.label"
+                        class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        (click)="removeResult(i, j)"
+                        class="self-center rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  } @empty {
+                    <p class="text-sm text-surface-900/50">Aucun résultat.</p>
+                  }
+                  <button
+                    type="button"
+                    (click)="addResult(i)"
+                    class="text-xs font-medium text-brand-700 hover:text-brand-800"
+                  >
+                    + Ajouter un résultat
+                  </button>
+                </div>
+              </details>
+
+              <!-- Stack technique -->
+              <details class="rounded-xl border border-surface-200/70 bg-white">
+                <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-surface-900 hover:bg-surface-50 transition">
+                  Stack technique ({{ model().experiences[i].tech.length }})
+                </summary>
+                <div class="border-t border-surface-100 p-4 space-y-2">
+                  @for (techField of expField.tech; track $index; let j = $index) {
+                    <div class="grid gap-2 sm:grid-cols-[1fr_2fr_auto] items-start">
+                      <input
+                        type="text"
+                        placeholder="Catégorie (ex : Backend)"
+                        [formField]="techField.category"
+                        class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Items (ex : Java, Spring Boot, PostgreSQL)"
+                        [formField]="techField.items"
+                        class="rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        (click)="removeTech(i, j)"
+                        class="self-center rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  } @empty {
+                    <p class="text-sm text-surface-900/50">Aucune ligne technique.</p>
+                  }
+                  <button
+                    type="button"
+                    (click)="addTech(i)"
+                    class="text-xs font-medium text-brand-700 hover:text-brand-800"
+                  >
+                    + Ajouter une ligne technique
+                  </button>
+                </div>
+              </details>
+            </div>
+          } @empty {
+            <p class="text-sm text-surface-900/50">Aucune expérience.</p>
+          }
+          <button
+            type="button"
+            (click)="addExperience()"
+            class="text-xs font-medium text-brand-700 hover:text-brand-800"
+          >
+            + Ajouter une expérience
+          </button>
+        </div>
+      </details>
+
+      <!-- Submit -->
+      <div class="flex justify-end gap-2 pt-2">
+        <app-button
+          variant="primary"
+          type="submit"
+          [disabled]="cvForm().submitting()"
+          [loading]="cvForm().submitting()"
+        >
+          Enregistrer les modifications
+        </app-button>
+      </div>
+    </form>
+
+    <!-- Fichiers PDF générés -->
+    <section class="surface-card rounded-2xl p-6">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+            {{ v.generatedCvs.length }} fichier{{ v.generatedCvs.length > 1 ? 's' : '' }}
+          </p>
+          <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Fichiers PDF générés</h2>
+        </div>
+      </div>
+      @if (v.generatedCvs.length > 0) {
+        <ul class="flex flex-col divide-y divide-surface-100">
+          @for (g of v.generatedCvs; track g.id) {
+            <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17h6m-6-4h6m-3-8H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" />
+                  </svg>
+                </span>
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-surface-900">
+                    {{ g.filename ?? g.id }}
+                  </p>
+                  <p class="text-xs text-surface-900/40">
+                    Modifié le {{ g.updatedAt | date: 'dd/MM/yyyy à HH:mm' }}
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                @switch (g.status) {
+                  @case ('success') {
+                    <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                      Prêt
+                    </span>
+                    <a
+                      [href]="downloadUrl(v.id, g.id)"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-surface-200/70 bg-white px-3 py-1.5 text-sm font-medium text-surface-900/80 hover:border-brand-300 hover:text-brand-700 transition"
+                    >
+                      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+                      </svg>
+                      Télécharger
+                    </a>
+                  }
+                  @case ('pending') {
+                    <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                      En attente
+                    </span>
+                  }
+                  @case ('processing') {
+                    <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                      En cours
+                    </span>
+                  }
+                  @case ('failed') {
+                    <span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                      Échec
+                    </span>
+                  }
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-sm text-surface-900/50">
+          Aucun PDF généré pour cette variante. Cliquez sur « Générer PDF » pour en créer un.
+        </p>
+      }
+    </section>
+  }
+</div>
