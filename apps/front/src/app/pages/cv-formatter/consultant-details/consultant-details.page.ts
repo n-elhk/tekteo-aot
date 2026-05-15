@@ -9,6 +9,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { firstValueFrom } from 'rxjs';
 import { ConsultantDetailsStore } from './consultant-details.store';
 import { VariantsList } from './variants-list/variants-list';
+import { MasterCvView } from './master-cv-view/master-cv-view';
 import {
   CreateVariantDialog,
   type CreateVariantDialogData,
@@ -18,7 +19,7 @@ import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
 
 @Component({
   selector: 'app-consultant-details',
-  imports: [RouterLink, VariantsList],
+  imports: [RouterLink, VariantsList, MasterCvView],
   providers: [ConsultantDetailsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -52,15 +53,22 @@ import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
           </button>
         </header>
 
-        <section>
-          <h2 class="text-lg font-medium mb-2">Variantes</h2>
-          <app-variants-list
-            [variants]="store.variants()"
-            (regenerate)="store.regenerateVariant($event)"
-            (generatePdf)="store.triggerVariantPdf($event)"
-            (delete)="onDelete($event)"
-          />
-        </section>
+        <div class="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6">
+          <section class="bg-white border rounded p-4">
+            <h2 class="text-lg font-medium mb-4">CV maître</h2>
+            <app-master-cv-view [cvData]="c.masterCvData" />
+          </section>
+
+          <section class="bg-white border rounded p-4">
+            <h2 class="text-lg font-medium mb-2">Variantes</h2>
+            <app-variants-list
+              [variants]="store.variants()"
+              (regenerate)="store.regenerateVariant($event)"
+              (generatePdf)="store.triggerVariantPdf($event)"
+              (delete)="onDelete($event)"
+            />
+          </section>
+        </div>
       }
     </div>
   `,
