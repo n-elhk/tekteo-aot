@@ -12,7 +12,7 @@ import {
   type CreateVariantDialogData,
 } from '../create-variant-dialog';
 import type { CreateCvVariantDto } from '../../../core/cv-variants/cv-variant.model';
-import { ConsultantsService } from '../../../core/consultants/consultants.service';
+import { MasterCvPdfDownloadService } from '../../../core/consultants/master-cv-pdf-download.service';
 import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
 import { Card } from '../../../shared/ui/card/card';
 import { Button } from '../../../shared/ui/button/button';
@@ -226,30 +226,28 @@ import {
               cdkMenu
               class="min-w-[200px] overflow-hidden rounded-xl border border-surface-200/70 bg-white py-1 shadow-[0_18px_40px_-12px_rgb(15_23_42/0.18)]"
             >
-              <a
+              <button
+                type="button"
                 cdkMenuItem
-                [href]="masterPdfUrl(c.id, 'tekteo')"
-                target="_blank"
-                rel="noopener"
+                (click)="downloadMasterPdf(c.id, 'tekteo')"
                 class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-surface-900 transition hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
               >
                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-brand-50 text-xs font-semibold text-brand-700">
                   T
                 </span>
                 Template Tekteo
-              </a>
-              <a
+              </button>
+              <button
+                type="button"
                 cdkMenuItem
-                [href]="masterPdfUrl(c.id, 'anonyme')"
-                target="_blank"
-                rel="noopener"
+                (click)="downloadMasterPdf(c.id, 'anonyme')"
                 class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-surface-900 transition hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
               >
                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-surface-100 text-xs font-semibold text-surface-900/70">
                   A
                 </span>
                 Template Anonyme
-              </a>
+              </button>
             </div>
           </ng-template>
 
@@ -326,10 +324,13 @@ export class ConsultantDetailsPage {
   protected readonly store = inject(ConsultantDetailsStore);
   private readonly dialog = inject(Dialog);
   private readonly toaster = inject(ToastService);
-  private readonly consultantsApi = inject(ConsultantsService);
+  private readonly masterPdfDownload = inject(MasterCvPdfDownloadService);
 
-  protected masterPdfUrl(id: string, template: 'tekteo' | 'anonyme'): string {
-    return this.consultantsApi.masterPdfUrl(id, template);
+  protected downloadMasterPdf(
+    id: string,
+    template: 'tekteo' | 'anonyme',
+  ): void {
+    void this.masterPdfDownload.trigger(id, template);
   }
 
   protected initials(first: string, last: string): string {

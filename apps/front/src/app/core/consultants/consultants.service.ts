@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import type { CvTemplateValue } from '@org/schemas';
 import type {
   Consultant,
@@ -56,8 +56,25 @@ export class ConsultantsService {
     );
   }
 
-  masterPdfUrl(consultantId: string, template: CvTemplateValue): string {
-    return `${this.baseUrl}/${consultantId}/master-pdf?template=${template}`;
+  downloadMasterPdf(
+    consultantId: string,
+    template: CvTemplateValue,
+  ): Observable<{ blob: Blob; filename: string }> {
+    return this.http
+      .get(`${this.baseUrl}/${consultantId}/master-pdf`, {
+        params: { template },
+        responseType: 'blob',
+        observe: 'response',
+      })
+      .pipe(
+        map((response) => ({
+          blob: response.body ?? new Blob(),
+          filename:
+            parseFilenameFromContentDisposition(
+              response.headers.get('Content-Disposition'),
+            ) ?? `cv-master-${template}.pdf`,
+        })),
+      );
   }
 
   importFromFile(files: File[]) {
@@ -88,4 +105,20 @@ export class ConsultantsService {
       return () => source.close();
     });
   }
+}
+
+function parseFilenameFromContentDisposition(
+  header: string | null,
+): string | null {
+  if (!header) return null;
+  const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf8Match) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      // fall through to ascii match
+    }
+  }
+  const asciiMatch = /filename="?([^";]+)"?/i.exec(header);
+  return asciiMatch ? asciiMatch[1] : null;
 }
