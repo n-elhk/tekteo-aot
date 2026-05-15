@@ -114,7 +114,7 @@ import {
           </div>
         </section>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start">
+        <div class="flex flex-col gap-4">
           <!-- CV maître -->
           <div
             cdkAccordionItem
