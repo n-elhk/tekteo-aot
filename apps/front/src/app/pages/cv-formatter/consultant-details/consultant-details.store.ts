@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import {
   signalStore,
   withState,
+  withProps,
   withMethods,
   patchState,
 } from '@ngrx/signals';
@@ -31,49 +32,59 @@ const initialState: State = {
 
 export const ConsultantDetailsStore = signalStore(
   withState(initialState),
-  withMethods((store) => {
-    const consultantsApi = inject(ConsultantsService);
-    const variantsApi = inject(CvVariantsService);
-    return {
-      async load(id: string) {
-        patchState(store, { loading: true, error: null });
-        try {
-          const [consultant, variants] = await Promise.all([
-            firstValueFrom(consultantsApi.findOne(id)),
-            firstValueFrom(variantsApi.listForConsultant(id)),
-          ]);
-          patchState(store, { consultant, variants, loading: false });
-        } catch (err) {
-          patchState(store, {
-            loading: false,
-            error: err instanceof Error ? err.message : 'Erreur de chargement',
-          });
-        }
-      },
-      async createVariant(dto: CreateCvVariantDto) {
-        const consultant = store.consultant();
-        if (!consultant) return;
-        const { variant } = await firstValueFrom(variantsApi.create(consultant.id, dto));
-        patchState(store, { variants: [variant, ...store.variants()] });
-      },
-      async regenerateVariant(variantId: string) {
-        const { variant } = await firstValueFrom(variantsApi.regenerate(variantId));
+  withProps(() => ({
+    _consultantsApi: inject(ConsultantsService),
+    _variantsApi: inject(CvVariantsService),
+  })),
+  withMethods((store) => ({
+    async load(id: string) {
+      patchState(store, { loading: true, error: null });
+      try {
+        const [consultant, variants] = await Promise.all([
+          firstValueFrom(store._consultantsApi.findOne(id)),
+          firstValueFrom(store._variantsApi.listForConsultant(id)),
+        ]);
+        patchState(store, { consultant, variants, loading: false });
+      } catch (err) {
         patchState(store, {
-          variants: store.variants().map((v) => (v.id === variantId ? variant : v)),
+          loading: false,
+          error: err instanceof Error ? err.message : 'Erreur de chargement',
         });
-      },
-      async updateVariant(variantId: string, dto: UpdateCvVariantDto) {
-        const variant = await firstValueFrom(variantsApi.update(variantId, dto));
-        patchState(store, {
-          variants: store.variants().map((v) => (v.id === variantId ? variant : v)),
-        });
-      },
-      async deleteVariant(variantId: string) {
-        await firstValueFrom(variantsApi.remove(variantId));
-        patchState(store, {
-          variants: store.variants().filter((v) => v.id !== variantId),
-        });
-      },
-    };
-  }),
+      }
+    },
+    async createVariant(dto: CreateCvVariantDto) {
+      const consultant = store.consultant();
+      if (!consultant) return;
+      const { variant } = await firstValueFrom(
+        store._variantsApi.create(consultant.id, dto),
+      );
+      patchState(store, { variants: [variant, ...store.variants()] });
+    },
+    async regenerateVariant(variantId: string) {
+      const { variant } = await firstValueFrom(
+        store._variantsApi.regenerate(variantId),
+      );
+      patchState(store, {
+        variants: store
+          .variants()
+          .map((v) => (v.id === variantId ? variant : v)),
+      });
+    },
+    async updateVariant(variantId: string, dto: UpdateCvVariantDto) {
+      const variant = await firstValueFrom(
+        store._variantsApi.update(variantId, dto),
+      );
+      patchState(store, {
+        variants: store
+          .variants()
+          .map((v) => (v.id === variantId ? variant : v)),
+      });
+    },
+    async deleteVariant(variantId: string) {
+      await firstValueFrom(store._variantsApi.remove(variantId));
+      patchState(store, {
+        variants: store.variants().filter((v) => v.id !== variantId),
+      });
+    },
+  })),
 );

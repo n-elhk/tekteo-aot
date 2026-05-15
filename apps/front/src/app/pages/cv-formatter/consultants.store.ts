@@ -2,9 +2,10 @@ import { computed, inject } from '@angular/core';
 import {
   signalStore,
   withState,
+  withProps,
   withMethods,
-  patchState,
   withComputed,
+  patchState,
 } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { ConsultantsService } from '../../core/consultants/consultants.service';
@@ -30,34 +31,34 @@ const initialState: ConsultantsState = {
 
 export const ConsultantsStore = signalStore(
   withState(initialState),
+  withProps(() => ({
+    _api: inject(ConsultantsService),
+  })),
   withComputed(({ total, pageSize }) => ({
     pageCount: computed(() => Math.max(1, Math.ceil(total() / pageSize()))),
   })),
-  withMethods((store) => {
-    const api = inject(ConsultantsService);
-    return {
-      async loadPage(page: number, pageSize = store.pageSize()) {
-        patchState(store, { loading: true, error: null });
-        try {
-          const res = await firstValueFrom(api.list({ page, pageSize }));
-          patchState(store, {
-            items: res.items,
-            total: res.total,
-            page: res.page,
-            pageSize: res.pageSize,
-            loading: false,
-          });
-        } catch (err) {
-          patchState(store, {
-            loading: false,
-            error: err instanceof Error ? err.message : 'Erreur de chargement',
-          });
-        }
-      },
-      async remove(id: string) {
-        await firstValueFrom(api.remove(id));
-        await this.loadPage(store.page());
-      },
-    };
-  }),
+  withMethods((store) => ({
+    async loadPage(page: number, pageSize = store.pageSize()) {
+      patchState(store, { loading: true, error: null });
+      try {
+        const res = await firstValueFrom(store._api.list({ page, pageSize }));
+        patchState(store, {
+          items: res.items,
+          total: res.total,
+          page: res.page,
+          pageSize: res.pageSize,
+          loading: false,
+        });
+      } catch (err) {
+        patchState(store, {
+          loading: false,
+          error: err instanceof Error ? err.message : 'Erreur de chargement',
+        });
+      }
+    },
+    async remove(id: string) {
+      await firstValueFrom(store._api.remove(id));
+      await this.loadPage(store.page());
+    },
+  })),
 );
