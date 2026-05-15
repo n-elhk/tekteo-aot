@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import type { CvTemplateValue } from '@org/schemas';
 import type {
   Consultant,
   ConsultantsList,
@@ -20,8 +19,6 @@ export interface ConsultantImportJobEvent {
   readonly status: string;
   readonly consultantId?: string | null;
   readonly error?: string | null;
-  readonly kind?: string;
-  readonly template?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -58,10 +55,9 @@ export class ConsultantsService {
     );
   }
 
-  importFromFile(files: File[], template: CvTemplateValue) {
+  importFromFile(files: File[]) {
     const formData = new FormData();
     for (const f of files) formData.append('files', f);
-    formData.append('template', template);
     return this.http.post<{ jobs: ConsultantImportFileJob[] }>(
       `${this.baseUrl}/import/file`,
       formData,

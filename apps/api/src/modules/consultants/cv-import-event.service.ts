@@ -5,10 +5,7 @@ import type { CvImportStatusValue } from '@org/schemas';
 export interface CvJobUpdate {
   status: CvImportStatusValue;
   error?: string | null;
-  cvId?: string | null;
-  downloadUrl?: string | null;
   consultantId?: string | null;
-  generatedCvId?: string | null;
 }
 
 @Injectable()

@@ -9,35 +9,6 @@
     (filesPicked)="onFilesPicked($event)"
   />
 
-  <!-- Sélecteur de template global -->
-  <fieldset class="rounded-xl border border-surface-200 p-4">
-    <legend class="px-2 text-sm font-medium text-surface-900">
-      Template à utiliser
-    </legend>
-    <div class="flex flex-wrap gap-3 mt-1">
-      <label class="inline-flex items-center gap-2 cursor-pointer">
-        <input
-          type="radio"
-          name="template"
-          value="tekteo"
-          [checked]="template() === 'tekteo'"
-          (change)="onTemplateChange('tekteo')"
-        />
-        <span class="text-sm text-surface-900/80">Tekteo</span>
-      </label>
-      <label class="inline-flex items-center gap-2 cursor-pointer">
-        <input
-          type="radio"
-          name="template"
-          value="anonyme"
-          [checked]="template() === 'anonyme'"
-          (change)="onTemplateChange('anonyme')"
-        />
-        <span class="text-sm text-surface-900/80">Anonyme</span>
-      </label>
-    </div>
-  </fieldset>
-
   <!-- Liste des fichiers -->
   @if (entries().length > 0) {
     <ul class="space-y-2">

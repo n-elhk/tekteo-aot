@@ -5,7 +5,7 @@ import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import mammoth from 'mammoth';
 import { Prisma } from '../../generated/prisma/client';
-import type { CvData, CvTemplateValue } from '@org/schemas';
+import type { CvData } from '@org/schemas';
 import { AnthropicService } from '../../common/anthropic/anthropic.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CV_IMPORT_QUEUE } from '../../common/queue/queue.module';
@@ -32,8 +32,8 @@ export class CvImportProcessor extends WorkerHost {
   }
 
   async process(job: Job<CvImportJobPayload>): Promise<void> {
-    const { jobId, kind } = job.data;
-    this.logger.log(`Processing CV ${kind} ${jobId}`);
+    const { jobId } = job.data;
+    this.logger.log(`Processing CV import ${jobId}`);
 
     const importJob = await this.prisma.cvImportJob.findUnique({
       where: { id: jobId },
@@ -41,12 +41,6 @@ export class CvImportProcessor extends WorkerHost {
     if (!importJob) {
       this.logger.warn(`CvImportJob ${jobId} introuvable, on ignore`);
       return;
-    }
-
-    if (kind !== 'import') {
-      throw new Error(
-        `Unsupported job kind '${kind}' — generate flow moved to CvVariantPdfService`,
-      );
     }
 
     await this.markStatus(jobId, 'processing');
@@ -76,7 +70,6 @@ export class CvImportProcessor extends WorkerHost {
     userId: string;
     inputPath: string | null;
     inputFilename: string | null;
-    template: CvTemplateValue;
   }): Promise<void> {
     if (!importJob.inputPath) {
       throw new Error('extraction_failed: inputPath manquant pour un job import');
@@ -127,15 +120,10 @@ export class CvImportProcessor extends WorkerHost {
       outputContent: `Import depuis ${importJob.inputFilename ?? '(inconnu)'} → consultant ${consultant.id}`,
       inputData: {
         mode: 'import-file',
-        template: importJob.template,
         inputFilename: importJob.inputFilename,
       },
     });
 
-    // NOTE: l'ancien pipeline générait automatiquement un PDF "tekteo" après import.
-    // Ce n'est plus possible : un PDF est rendu pour une VARIANTE, pas un consultant
-    // brut. L'utilisateur devra créer une variante depuis l'UI puis lancer le rendu.
-    // → on marque le job comme done.
     await this.markStatus(importJob.id, 'done');
     this.events.emit(importJob.id, {
       status: 'done',

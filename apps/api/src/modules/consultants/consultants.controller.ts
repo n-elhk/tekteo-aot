@@ -19,12 +19,10 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   consultantsListQuerySchema,
   createConsultantSchema,
-  cvTemplateSchema,
   importConsultantFromTextSchema,
   updateConsultantSchema,
   type ConsultantsListQueryDto,
   type CreateConsultantDto,
-  type CvTemplateValue,
   type ImportConsultantFromTextDto,
   type UpdateConsultantDto,
 } from '@org/schemas';
@@ -102,10 +100,8 @@ export class ConsultantsController {
   importFromFile(
     @CurrentUser() user: AuthUser,
     @UploadedFiles() files: Express.Multer.File[],
-    @Body('template', new ZodValidationPipe(cvTemplateSchema))
-    template: CvTemplateValue,
   ) {
-    return this.imports.createBulkImports(user.id, files, template);
+    return this.imports.createBulkImports(user.id, files);
   }
 
   @Get('import-jobs/:jobId')
@@ -124,9 +120,7 @@ export class ConsultantsController {
     if (job.status === 'done' || job.status === 'failed') {
       return of(
         toEvent({
-          kind: job.kind,
           status: job.status,
-          template: job.template,
           consultantId: job.consultantId,
           error: job.error,
         }),
@@ -134,7 +128,7 @@ export class ConsultantsController {
     }
 
     return concat(
-      of(toEvent({ kind: job.kind, status: job.status, template: job.template })),
+      of(toEvent({ status: job.status })),
       this.importEvents.watch(jobId).pipe(map(toEvent)),
     );
   }

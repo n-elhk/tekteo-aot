@@ -22,7 +22,6 @@ import {
   takeWhile,
   tap,
 } from 'rxjs';
-import type { CvTemplateValue } from '@org/schemas';
 import {
   ConsultantsService,
   type ConsultantImportJobEvent,
@@ -85,7 +84,6 @@ export class CvImportSection {
   readonly imported = output<void>();
 
   protected readonly importAcceptAttr = IMPORT_ACCEPT_ATTR;
-  protected readonly template = signal<CvTemplateValue>('tekteo');
 
   /** Liste des fichiers contrôlée par l'utilisateur (ajout/suppression). */
   private readonly baseEntries = signal<readonly FileEntry[]>([]);
@@ -228,12 +226,6 @@ export class CvImportSection {
     this.baseEntries.update((l) => l.filter((e) => e.localId !== localId));
   }
 
-  protected onTemplateChange(value: string): void {
-    if (value === 'tekteo' || value === 'anonyme') {
-      this.template.set(value);
-    }
-  }
-
   protected submit(): void {
     if (!this.canSubmit()) return;
 
@@ -244,7 +236,7 @@ export class CvImportSection {
     this.jobsToWatch.set([]);
 
     this.consultants
-      .importFromFile(files, this.template())
+      .importFromFile(files)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         tap(({ jobs }) => {

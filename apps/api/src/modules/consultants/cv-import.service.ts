@@ -9,7 +9,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import type { CvTemplateValue } from '@org/schemas';
 import { CV_IMPORT_QUEUE } from '../../common/queue/queue.module';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -29,10 +28,7 @@ interface FileLike {
 
 export interface CvImportJobPayload {
   jobId: string;
-  kind: 'import' | 'generate';
-  inputPath?: string;
-  consultantId?: string;
-  template: CvTemplateValue;
+  inputPath: string;
 }
 
 @Injectable()
@@ -52,13 +48,9 @@ export class CvImportService {
 
   /**
    * Crée N jobs d'import (un par fichier) en parallèle.
-   * Chaque fichier devient un profil consultant + un CV généré.
+   * Chaque fichier devient un profil consultant.
    */
-  async createBulkImports(
-    userId: string,
-    files: FileLike[],
-    template: CvTemplateValue,
-  ) {
+  async createBulkImports(userId: string, files: FileLike[]) {
     if (!files || files.length === 0) {
       throw new BadRequestException('Aucun fichier fourni');
     }
@@ -70,44 +62,9 @@ export class CvImportService {
     files.forEach((f) => this.validateFile(f));
 
     const jobs = await Promise.all(
-      files.map((file) => this.createSingleImport(userId, file, template)),
+      files.map((file) => this.createSingleImport(userId, file)),
     );
     return { jobs };
-  }
-
-  /**
-   * Crée un job de génération (depuis la page détail) — pas de fichier en input.
-   */
-  async createGenerationJob(
-    userId: string,
-    consultantId: string,
-    template: CvTemplateValue,
-  ) {
-    const consultant = await this.prisma.consultant.findUnique({
-      where: { id: consultantId },
-      select: { id: true },
-    });
-    if (!consultant) {
-      throw new NotFoundException(`Consultant ${consultantId} introuvable`);
-    }
-
-    const job = await this.prisma.cvImportJob.create({
-      data: {
-        userId,
-        kind: 'generate',
-        template,
-        consultantId,
-        status: 'pending',
-      },
-    });
-
-    await this.queue.add(
-      CV_IMPORT_QUEUE,
-      { jobId: job.id, kind: 'generate', consultantId, template },
-      { removeOnComplete: { age: 86_400 }, removeOnFail: { age: 86_400 } },
-    );
-
-    return { jobId: job.id, status: job.status };
   }
 
   async getJob(jobId: string, userId: string) {
@@ -119,11 +76,8 @@ export class CvImportService {
     }
     return {
       jobId: job.id,
-      kind: job.kind,
       status: job.status,
-      template: job.template,
       consultantId: job.consultantId,
-      generatedCvId: job.generatedCvId,
       inputFilename: job.inputFilename,
       error: job.errorMessage,
       createdAt: job.createdAt.toISOString(),
@@ -135,11 +89,7 @@ export class CvImportService {
   // Helpers
   // -----------------------------------------------------------
 
-  private async createSingleImport(
-    userId: string,
-    file: FileLike,
-    template: CvTemplateValue,
-  ) {
+  private async createSingleImport(userId: string, file: FileLike) {
     const ext = file.mimetype === 'application/pdf' ? 'pdf' : 'docx';
     const uuid = randomUUID();
     const importsDir = join(this.uploadsDir, 'cv-imports');
@@ -150,8 +100,6 @@ export class CvImportService {
     const job = await this.prisma.cvImportJob.create({
       data: {
         userId,
-        kind: 'import',
-        template,
         inputPath,
         inputFilename: file.originalname,
         status: 'pending',
@@ -160,7 +108,7 @@ export class CvImportService {
 
     await this.queue.add(
       CV_IMPORT_QUEUE,
-      { jobId: job.id, kind: 'import', inputPath, template },
+      { jobId: job.id, inputPath },
       { removeOnComplete: { age: 86_400 }, removeOnFail: { age: 86_400 } },
     );
 
