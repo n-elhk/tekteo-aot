@@ -126,6 +126,7 @@ model User {
   generations       GenerationHistory[]  @relation("GenerationAuthor")
   documentsUploaded ProjectDocument[]    @relation("DocumentUploader")
   cvsCreated        ConsultantCv[]       @relation("CvCreator")
+  consultants       Consultant[]         @relation("ConsultantCreator")
   generatedCvs      GeneratedCv[]        @relation("GeneratedCvCreator")
   aoFavorites       AoFavorite[]
   cvImportJobs      CvImportJob[]
@@ -447,4 +448,25 @@ model AoFavorite {
 
   @@unique([userId, aoId])
   @@map("ao_favorites")
+}
+
+model Consultant {
+  id              String   @id @default(uuid())
+  firstName       String   @map("first_name")
+  lastName        String   @map("last_name")
+  email           String   @unique
+  phone           String?
+  role            String?
+  yearsExperience Int?     @map("years_experience")
+  location        String?
+  masterCvData    Json     @map("master_cv_data")
+  createdById     String?  @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  createdBy  User?         @relation("ConsultantCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  variants   CvVariant[]
+  importJobs CvImportJob[]
+
+  @@map("consultants")
 }
