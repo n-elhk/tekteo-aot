@@ -202,7 +202,7 @@
                 <input
                   type="number"
                   step="1"
-                  placeholder="Niveau /5"
+                  placeholder="Niveau /100"
                   [formField]="skillField.level"
                   class="block w-full rounded-xl border border-surface-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none"
                 />
@@ -733,7 +733,7 @@
         <app-button
           variant="primary"
           type="submit"
-          [disabled]="cvForm().submitting()"
+          [disabled]="cvForm().submitting() || cvForm().invalid()"
           [loading]="cvForm().submitting()"
         >
           Enregistrer les modifications

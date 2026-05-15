@@ -28,7 +28,7 @@ import type { CvData } from '@org/schemas';
               <li class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
                 {{ s.name }}
                 @if (s.level) {
-                  <span class="text-brand-500/60">· {{ s.level }}/5</span>
+                  <span class="text-brand-500/60">· {{ s.level }}/100</span>
                 }
               </li>
             }

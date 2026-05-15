@@ -189,7 +189,7 @@ export class VariantDetailsPage {
     (path) => {
       applyEach(path.skills, (skill) => {
         min(skill.level, 0, { message: 'Niveau >= 0' });
-        max(skill.level, 5, { message: 'Niveau <= 5' });
+        max(skill.level, 100, { message: 'Niveau <= 100' });
       });
       applyEach(path.languages, (lang) => {
         min(lang.dots, 0, { message: 'Niveau >= 0' });
