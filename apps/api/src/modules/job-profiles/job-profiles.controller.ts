@@ -30,6 +30,11 @@ import { JobProfilesService } from './job-profiles.service';
 export class JobProfilesController {
   constructor(private readonly profiles: JobProfilesService) {}
 
+  @Get('job-profiles')
+  findAll() {
+    return this.profiles.findAll();
+  }
+
   @Get('projects/:projectId/job-profiles')
   findAllByProject(@Param('projectId') projectId: string) {
     return this.profiles.findAllByProject(projectId);

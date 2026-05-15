@@ -56,6 +56,13 @@ export class JobProfilesService {
     private readonly history: GenerationHistoryService,
   ) {}
 
+  findAll() {
+    return this.prisma.jobProfile.findMany({
+      orderBy: { title: 'asc' },
+      select: { id: true, title: true, projectId: true },
+    });
+  }
+
   findAllByProject(projectId: string) {
     return this.prisma.jobProfile.findMany({
       where: { projectId },
