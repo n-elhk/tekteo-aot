@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { CdkAccordionItem } from '@angular/cdk/accordion';
 import { Dialog } from '@angular/cdk/dialog';
 import { filter, firstValueFrom } from 'rxjs';
 import { ConsultantDetailsStore } from './consultant-details.store';
@@ -20,7 +21,14 @@ import {
 
 @Component({
   selector: 'app-consultant-details',
-  imports: [RouterLink, VariantsList, MasterCvView, Card, Button],
+  imports: [
+    RouterLink,
+    CdkAccordionItem,
+    VariantsList,
+    MasterCvView,
+    Card,
+    Button,
+  ],
   providers: [ConsultantDetailsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -106,35 +114,101 @@ import {
           </div>
         </section>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start">
           <!-- CV maître -->
-          <section class="rounded-2xl border border-surface-200/70 bg-white p-6 shadow-sm">
-            <header class="mb-5 flex items-center justify-between">
+          <div
+            cdkAccordionItem
+            #master="cdkAccordionItem"
+            [expanded]="true"
+            class="block overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm"
+          >
+            <button
+              type="button"
+              class="flex w-full items-center justify-between gap-4 p-6 text-left transition hover:bg-surface-50"
+              [attr.aria-expanded]="master.expanded"
+              [attr.aria-controls]="'master-cv-panel-' + master.id"
+              (click)="master.toggle()"
+            >
               <div>
-                <p class="text-xs font-medium uppercase tracking-wider text-brand-700">CV maître</p>
-                <h2 class="mt-0.5 text-lg font-semibold text-surface-900">Profil de référence</h2>
+                <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
+                  CV maître
+                </p>
+                <h2 class="mt-0.5 text-lg font-semibold text-surface-900">
+                  Profil de référence
+                </h2>
               </div>
-            </header>
-            <app-master-cv-view [cvData]="c.masterCvData" />
-          </section>
+              <svg
+                viewBox="0 0 24 24"
+                class="h-5 w-5 shrink-0 text-surface-900/40 transition-transform duration-200"
+                [class.rotate-180]="master.expanded"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            @if (master.expanded) {
+              <div
+                [id]="'master-cv-panel-' + master.id"
+                role="region"
+                class="border-t border-surface-100 p-6"
+              >
+                <app-master-cv-view [cvData]="c.masterCvData" />
+              </div>
+            }
+          </div>
 
           <!-- Variantes -->
-          <section class="rounded-2xl border border-surface-200/70 bg-white p-6 shadow-sm">
-            <header class="mb-5 flex items-center justify-between">
+          <div
+            cdkAccordionItem
+            #variants="cdkAccordionItem"
+            [expanded]="false"
+            class="block overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm"
+          >
+            <button
+              type="button"
+              class="flex w-full items-center justify-between gap-4 p-6 text-left transition hover:bg-surface-50"
+              [attr.aria-expanded]="variants.expanded"
+              [attr.aria-controls]="'variants-panel-' + variants.id"
+              (click)="variants.toggle()"
+            >
               <div>
                 <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
                   {{ store.variants().length }} variante{{ store.variants().length > 1 ? 's' : '' }}
                 </p>
-                <h2 class="mt-0.5 text-lg font-semibold text-surface-900">CV adaptés</h2>
+                <h2 class="mt-0.5 text-lg font-semibold text-surface-900">
+                  CV adaptés
+                </h2>
               </div>
-            </header>
-            <app-variants-list
-              [variants]="store.variants()"
-              (regenerate)="store.regenerateVariant($event)"
-              (generatePdf)="store.triggerVariantPdf($event)"
-              (delete)="confirmDeleteVariant($event)"
-            />
-          </section>
+              <svg
+                viewBox="0 0 24 24"
+                class="h-5 w-5 shrink-0 text-surface-900/40 transition-transform duration-200"
+                [class.rotate-180]="variants.expanded"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            @if (variants.expanded) {
+              <div
+                [id]="'variants-panel-' + variants.id"
+                role="region"
+                class="border-t border-surface-100 p-6"
+              >
+                <app-variants-list
+                  [variants]="store.variants()"
+                  (regenerate)="store.regenerateVariant($event)"
+                  (generatePdf)="store.triggerVariantPdf($event)"
+                  (delete)="confirmDeleteVariant($event)"
+                />
+              </div>
+            }
+          </div>
         </div>
       }
     </div>
