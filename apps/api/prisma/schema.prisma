@@ -127,6 +127,7 @@ model User {
   documentsUploaded ProjectDocument[]    @relation("DocumentUploader")
   cvsCreated        ConsultantCv[]       @relation("CvCreator")
   consultants       Consultant[]         @relation("ConsultantCreator")
+  variants          CvVariant[]          @relation("VariantCreator")
   generatedCvs      GeneratedCv[]        @relation("GeneratedCvCreator")
   aoFavorites       AoFavorite[]
   cvImportJobs      CvImportJob[]
@@ -385,8 +386,7 @@ model ConsultantCv {
 
 model GeneratedCv {
   id           String             @id @default(uuid())
-  consultantId String             @map("consultant_id")
-  template     CvTemplate
+  variantId    String             @map("variant_id")
   status       CvGenerationStatus @default(pending)
   outputPath   String?            @map("output_path")
   filename     String?
@@ -395,11 +395,11 @@ model GeneratedCv {
   createdAt    DateTime           @default(now()) @map("created_at")
   updatedAt    DateTime           @updatedAt      @map("updated_at")
 
-  consultant ConsultantCv  @relation(fields: [consultantId], references: [id], onDelete: Cascade)
-  createdBy  User?         @relation("GeneratedCvCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  jobs       CvImportJob[]
+  variant   CvVariant     @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  createdBy User?         @relation("GeneratedCvCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  jobs      CvImportJob[]
 
-  @@index([consultantId])
+  @@index([variantId])
   @@index([status])
   @@map("generated_cvs")
 }
@@ -469,4 +469,25 @@ model Consultant {
   importJobs CvImportJob[]
 
   @@map("consultants")
+}
+
+model CvVariant {
+  id           String     @id @default(uuid())
+  consultantId String     @map("consultant_id")
+  jobProfileId String     @map("job_profile_id")
+  template     CvTemplate
+  name         String
+  cvData       Json       @map("cv_data")
+  createdById  String?    @map("created_by")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt      @map("updated_at")
+
+  consultant   Consultant    @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  jobProfile   JobProfile    @relation(fields: [jobProfileId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation("VariantCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  generatedCvs GeneratedCv[]
+
+  @@index([consultantId])
+  @@index([jobProfileId])
+  @@map("cv_variants")
 }
