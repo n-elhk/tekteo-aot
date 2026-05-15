@@ -6,7 +6,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
-import { firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom } from 'rxjs';
 import { ConsultantDetailsStore } from './consultant-details.store';
 import { VariantsList } from './variants-list/variants-list';
 import { MasterCvView } from './master-cv-view/master-cv-view';
@@ -18,6 +18,10 @@ import type { CreateCvVariantDto } from '../../../core/cv-variants/cv-variant.mo
 import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
 import { Card } from '../../../shared/ui/card/card';
 import { Button } from '../../../shared/ui/button/button';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../../shared/ui/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-consultant-details',
@@ -133,7 +137,7 @@ import { Button } from '../../../shared/ui/button/button';
               [variants]="store.variants()"
               (regenerate)="store.regenerateVariant($event)"
               (generatePdf)="store.triggerVariantPdf($event)"
-              (delete)="onDelete($event)"
+              (delete)="confirmDeleteVariant($event)"
             />
           </section>
         </div>
@@ -173,8 +177,23 @@ export class ConsultantDetailsPage {
     }
   }
 
-  protected onDelete(id: string) {
-    if (!confirm('Supprimer cette variante ?')) return;
-    this.store.deleteVariant(id);
+  protected confirmDeleteVariant(id: string) {
+    const variant = this.store.variants().find((v) => v.id === id);
+    if (!variant) return;
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(
+      ConfirmDialog,
+      {
+        ...APP_DIALOG_CONFIG,
+        data: {
+          title: 'Supprimer cette variante ?',
+          description: `« ${variant.name} » et ses fichiers PDF seront définitivement supprimés.`,
+          confirmLabel: 'Supprimer',
+          variant: 'danger',
+        },
+      },
+    );
+    ref.closed.pipe(filter(Boolean)).subscribe(() => {
+      this.store.deleteVariant(id);
+    });
   }
 }
