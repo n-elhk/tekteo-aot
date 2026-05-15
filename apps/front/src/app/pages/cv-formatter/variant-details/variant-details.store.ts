@@ -1,14 +1,16 @@
 import { inject } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import {
   signalStore,
   withState,
   withProps,
   withMethods,
+  withHooks,
   patchState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
-import { EMPTY, pipe, switchMap } from 'rxjs';
+import { EMPTY, map, pipe, switchMap } from 'rxjs';
 import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import type { CvVariant } from '../../../core/cv-variants/cv-variant.model';
 
@@ -24,11 +26,13 @@ export const VariantDetailsStore = signalStore(
   withState(initial),
   withProps(() => ({
     _api: inject(CvVariantsService),
+    _route: inject(ActivatedRoute),
   })),
   withMethods((store) => ({
     load: rxMethod<string>(
       pipe(
         switchMap((id) => {
+          if (!id) return EMPTY;
           patchState(store, { loading: true, error: null });
           return store._api.findOne(id).pipe(
             tapResponse({
@@ -127,4 +131,11 @@ export const VariantDetailsStore = signalStore(
       ),
     ),
   })),
+  withHooks({
+    onInit(store) {
+      store.load(
+        store._route.paramMap.pipe(map((p) => p.get('id') ?? '')),
+      );
+    },
+  }),
 );

@@ -1,14 +1,16 @@
 import { inject } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import {
   signalStore,
   withState,
   withProps,
   withMethods,
+  withHooks,
   patchState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
-import { EMPTY, forkJoin, pipe, switchMap } from 'rxjs';
+import { EMPTY, forkJoin, map, pipe, switchMap } from 'rxjs';
 import { ConsultantsService } from '../../../core/consultants/consultants.service';
 import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import type { Consultant } from '../../../core/consultants/consultant.model';
@@ -37,11 +39,13 @@ export const ConsultantDetailsStore = signalStore(
   withProps(() => ({
     _consultantsApi: inject(ConsultantsService),
     _variantsApi: inject(CvVariantsService),
+    _route: inject(ActivatedRoute),
   })),
   withMethods((store) => ({
     load: rxMethod<string>(
       pipe(
         switchMap((id) => {
+          if (!id) return EMPTY;
           patchState(store, { loading: true, error: null });
           return forkJoin({
             consultant: store._consultantsApi.findOne(id),
@@ -181,4 +185,11 @@ export const ConsultantDetailsStore = signalStore(
       ),
     ),
   })),
+  withHooks({
+    onInit(store) {
+      store.load(
+        store._route.paramMap.pipe(map((p) => p.get('id') ?? '')),
+      );
+    },
+  }),
 );

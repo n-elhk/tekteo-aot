@@ -1,9 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-  input,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { filter, firstValueFrom } from 'rxjs';
@@ -146,13 +141,8 @@ import {
   `,
 })
 export class ConsultantDetailsPage {
-  readonly id = input.required<string>();
   protected readonly store = inject(ConsultantDetailsStore);
   private readonly dialog = inject(Dialog);
-
-  constructor() {
-    this.store.load(this.id);
-  }
 
   protected initials(first: string, last: string): string {
     return ((first?.[0] ?? '') + (last?.[0] ?? '')).toUpperCase() || '?';

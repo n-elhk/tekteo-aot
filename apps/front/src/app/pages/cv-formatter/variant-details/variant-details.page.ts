@@ -3,7 +3,6 @@ import {
   Component,
   effect,
   inject,
-  input,
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -89,14 +88,12 @@ import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service
   `,
 })
 export class VariantDetailsPage {
-  readonly id = input.required<string>();
   protected readonly store = inject(VariantDetailsStore);
   private readonly api = inject(CvVariantsService);
   protected readonly nameDraft = signal<string>('');
   protected readonly cvDataDraft = signal<string>('');
 
   constructor() {
-    this.store.load(this.id);
     effect(() => {
       const v = this.store.variant();
       if (v) {
