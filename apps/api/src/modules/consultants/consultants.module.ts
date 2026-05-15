@@ -7,6 +7,7 @@ import { CvImportService } from './cv-import.service';
 import { CvImportProcessor } from './cv-import.processor';
 import { TemplateFillerService } from './template-filler.service';
 import { PdfRendererService } from './pdf-renderer.service';
+import { MasterCvPdfService } from './master-cv-pdf.service';
 import { CV_IMPORT_QUEUE } from '../../common/queue/queue.module';
 import { AuthModule } from '../auth/auth.module';
 
@@ -20,6 +21,7 @@ import { AuthModule } from '../auth/auth.module';
     CvImportProcessor,
     TemplateFillerService,
     PdfRendererService,
+    MasterCvPdfService,
   ],
   exports: [
     ConsultantsService,

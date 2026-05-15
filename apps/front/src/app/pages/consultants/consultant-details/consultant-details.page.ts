@@ -12,6 +12,7 @@ import {
   type CreateVariantDialogData,
 } from '../create-variant-dialog';
 import type { CreateCvVariantDto } from '../../../core/cv-variants/cv-variant.model';
+import { ConsultantsService } from '../../../core/consultants/consultants.service';
 import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
 import { Card } from '../../../shared/ui/card/card';
 import { Button } from '../../../shared/ui/button/button';
@@ -163,12 +164,15 @@ import {
             [expanded]="true"
             class="block overflow-hidden rounded-2xl border border-surface-200/70 bg-white shadow-sm"
           >
-            <button
-              type="button"
-              class="flex w-full items-center justify-between gap-4 p-6 text-left transition hover:bg-surface-50"
+            <div
+              role="button"
+              tabindex="0"
+              class="flex w-full items-center justify-between gap-4 p-6 cursor-pointer transition hover:bg-surface-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30"
               [attr.aria-expanded]="master.expanded"
               [attr.aria-controls]="'master-cv-panel-' + master.id"
               (click)="master.toggle()"
+              (keydown.enter)="master.toggle()"
+              (keydown.space)="$event.preventDefault(); master.toggle()"
             >
               <div>
                 <p class="text-xs font-medium uppercase tracking-wider text-brand-700">
@@ -178,18 +182,34 @@ import {
                   Profil de référence
                 </h2>
               </div>
-              <svg
-                viewBox="0 0 24 24"
-                class="h-5 w-5 shrink-0 text-surface-900/40 transition-transform duration-200"
-                [class.rotate-180]="master.expanded"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-surface-200/70 bg-white px-3 py-1.5 text-sm font-medium text-surface-900/70 transition hover:border-brand-300 hover:text-brand-700"
+                  [cdkMenuTriggerFor]="masterPdfMenu"
+                  (click)="$event.stopPropagation()"
+                  (keydown.enter)="$event.stopPropagation()"
+                  (keydown.space)="$event.stopPropagation()"
+                  aria-label="Télécharger le CV maître"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                  PDF
+                </button>
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-5 w-5 shrink-0 text-surface-900/40 transition-transform duration-200"
+                  [class.rotate-180]="master.expanded"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+                </svg>
+              </div>
+            </div>
             @if (master.expanded) {
               <div
                 [id]="'master-cv-panel-' + master.id"
@@ -200,6 +220,38 @@ import {
               </div>
             }
           </div>
+
+          <ng-template #masterPdfMenu>
+            <div
+              cdkMenu
+              class="min-w-[200px] overflow-hidden rounded-xl border border-surface-200/70 bg-white py-1 shadow-[0_18px_40px_-12px_rgb(15_23_42/0.18)]"
+            >
+              <a
+                cdkMenuItem
+                [href]="masterPdfUrl(c.id, 'tekteo')"
+                target="_blank"
+                rel="noopener"
+                class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-surface-900 transition hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              >
+                <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-brand-50 text-xs font-semibold text-brand-700">
+                  T
+                </span>
+                Template Tekteo
+              </a>
+              <a
+                cdkMenuItem
+                [href]="masterPdfUrl(c.id, 'anonyme')"
+                target="_blank"
+                rel="noopener"
+                class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-surface-900 transition hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              >
+                <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-surface-100 text-xs font-semibold text-surface-900/70">
+                  A
+                </span>
+                Template Anonyme
+              </a>
+            </div>
+          </ng-template>
 
           <!-- Variantes -->
           <div
@@ -274,6 +326,11 @@ export class ConsultantDetailsPage {
   protected readonly store = inject(ConsultantDetailsStore);
   private readonly dialog = inject(Dialog);
   private readonly toaster = inject(ToastService);
+  private readonly consultantsApi = inject(ConsultantsService);
+
+  protected masterPdfUrl(id: string, template: 'tekteo' | 'anonyme'): string {
+    return this.consultantsApi.masterPdfUrl(id, template);
+  }
 
   protected initials(first: string, last: string): string {
     return ((first?.[0] ?? '') + (last?.[0] ?? '')).toUpperCase() || '?';

@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import type { CvTemplateValue } from '@org/schemas';
 import type {
   Consultant,
   ConsultantsList,
@@ -53,6 +54,10 @@ export class ConsultantsService {
       `${this.baseUrl}/import/text`,
       dto,
     );
+  }
+
+  masterPdfUrl(consultantId: string, template: CvTemplateValue): string {
+    return `${this.baseUrl}/${consultantId}/master-pdf?template=${template}`;
   }
 
   importFromFile(files: File[]) {

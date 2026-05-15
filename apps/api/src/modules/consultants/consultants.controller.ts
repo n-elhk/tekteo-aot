@@ -9,20 +9,24 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   Sse,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { concat, map, Observable, of } from 'rxjs';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   consultantsListQuerySchema,
   createConsultantSchema,
+  cvTemplateSchema,
   importConsultantFromTextSchema,
   updateConsultantSchema,
   type ConsultantsListQueryDto,
   type CreateConsultantDto,
+  type CvTemplateValue,
   type ImportConsultantFromTextDto,
   type UpdateConsultantDto,
 } from '@org/schemas';
@@ -35,6 +39,7 @@ import type { AuthUser } from '../../common/types/auth.types';
 import { ConsultantsService } from './consultants.service';
 import { CvImportEventService } from './cv-import-event.service';
 import { CvImportService } from './cv-import.service';
+import { MasterCvPdfService } from './master-cv-pdf.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('consultants')
@@ -43,6 +48,7 @@ export class ConsultantsController {
     private readonly consultants: ConsultantsService,
     private readonly imports: CvImportService,
     private readonly importEvents: CvImportEventService,
+    private readonly masterPdf: MasterCvPdfService,
   ) {}
 
   @Get()
@@ -56,6 +62,24 @@ export class ConsultantsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.consultants.findOne(id);
+  }
+
+  @Get(':id/master-pdf')
+  async downloadMasterPdf(
+    @Param('id') id: string,
+    @Query('template', new ZodValidationPipe(cvTemplateSchema))
+    template: CvTemplateValue,
+    @CurrentUser() user: AuthUser,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.masterPdf.render(
+      id,
+      template,
+      user.id,
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.end(buffer);
   }
 
   @Post()

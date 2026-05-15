@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { CvData, CvTemplateValue } from '@org/schemas';
+import type { CvData } from '@org/schemas';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { GenerationHistoryService } from '../generation-history/generation-history.service';
 import { TemplateFillerService } from '../consultants/template-filler.service';
 import { PdfRendererService } from '../consultants/pdf-renderer.service';
+import { buildCvFilename } from '../consultants/cv-pdf-filename.util';
 import { GeneratedCvsService } from './generated-cvs.service';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class CvVariantPdfService {
         variant.template,
       );
       const pdfBuffer = await this.pdfRenderer.render(filled.html);
-      const filename = buildFilename(variant.consultant.lastName, variant.template);
+      const filename = buildCvFilename(variant.consultant.lastName, variant.template);
       const stored = await this.generatedCvs.storePdf(
         generated.id,
         variant.id,
@@ -64,12 +65,3 @@ export class CvVariantPdfService {
   }
 }
 
-function buildFilename(lastName: string, template: CvTemplateValue): string {
-  const slug = lastName
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '') || 'consultant';
-  return `${slug}_${template}.pdf`;
-}
