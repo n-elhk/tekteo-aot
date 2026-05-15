@@ -125,7 +125,6 @@ model User {
   promptsUpdated    SystemPrompt[]       @relation("PromptUpdater")
   generations       GenerationHistory[]  @relation("GenerationAuthor")
   documentsUploaded ProjectDocument[]    @relation("DocumentUploader")
-  cvsCreated        ConsultantCv[]       @relation("CvCreator")
   consultants       Consultant[]         @relation("ConsultantCreator")
   variants          CvVariant[]          @relation("VariantCreator")
   generatedCvs      GeneratedCv[]        @relation("GeneratedCvCreator")
@@ -263,10 +262,6 @@ model JobProfile {
   generatedContent     String           @default("") @map("generated_content")
   status               SectionStatus    @default(brouillon)
   boondmanagerUrl      String?          @map("boondmanager_url")
-  consultantName       String?          @map("consultant_name")
-  consultantTitle      String?          @map("consultant_title")
-  consultantYearsExp   Int?             @map("consultant_years_exp")
-  consultantSummary    String?          @map("consultant_summary")
   reference            String?
   marketContext        String?          @map("market_context")
   missionType          String?          @map("mission_type")
@@ -285,12 +280,11 @@ model JobProfile {
   salaryWarning        String?          @map("salary_warning")
   quantityNeeded       Int              @default(1) @map("quantity_needed")
   remunerationType     RemunerationType? @map("remuneration_type")
-  cvId                 String?          @map("cv_id")
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
-  project Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  cv      ConsultantCv?  @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  project  Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  variants CvVariant[]
 
   @@index([projectId])
   @@map("job_profiles")
@@ -357,27 +351,6 @@ model ProjectDocument {
 
   @@index([projectId])
   @@map("project_documents")
-}
-
-// ============================================================
-// ConsultantCv — CV formaté (JSON)
-// ============================================================
-
-model ConsultantCv {
-  id              String   @id @default(uuid())
-  cvData          Json     @map("cv_data")
-  consultantName  String?  @map("consultant_name")
-  consultantTitle String?  @map("consultant_title")
-  createdById     String?  @map("created_by")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt      @map("updated_at")
-
-  createdBy    User?         @relation("CvCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  jobProfiles  JobProfile[]
-  importJobs   CvImportJob[]
-  generatedCvs GeneratedCv[]
-
-  @@map("consultant_cvs")
 }
 
 // ============================================================
