@@ -12,7 +12,6 @@ import {
   Res,
   Sse,
   UploadedFiles,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -30,18 +29,15 @@ import {
   type ImportConsultantFromTextDto,
   type UpdateConsultantDto,
 } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { ConsultantsService } from './consultants.service';
 import { CvImportEventService } from './cv-import-event.service';
 import { CvImportService } from './cv-import.service';
 import { MasterCvPdfService } from './master-cv-pdf.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('consultants')
 export class ConsultantsController {
   constructor(
@@ -69,13 +65,13 @@ export class ConsultantsController {
     @Param('id') id: string,
     @Query('template', new ZodValidationPipe(cvTemplateSchema))
     template: CvTemplateValue,
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Res() res: Response,
   ) {
     const { buffer, filename } = await this.masterPdf.render(
       id,
       template,
-      user.id,
+      user.sub,
     );
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -85,10 +81,10 @@ export class ConsultantsController {
   @Post()
   @Roles(['admin', 'redacteur'])
   create(
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(createConsultantSchema)) dto: CreateConsultantDto,
   ) {
-    return this.consultants.create(user.id, dto);
+    return this.consultants.create(user.sub, dto);
   }
 
   @Patch(':id')
@@ -111,34 +107,34 @@ export class ConsultantsController {
   @Roles(['admin', 'redacteur'])
   @HttpCode(200)
   importFromText(
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(importConsultantFromTextSchema))
     dto: ImportConsultantFromTextDto,
   ) {
-    return this.consultants.importFromText(user.id, dto);
+    return this.consultants.importFromText(user.sub, dto);
   }
 
   @Post('import/file')
   @Roles(['admin', 'redacteur'])
   @UseInterceptors(FilesInterceptor('files', 10))
   importFromFile(
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.imports.createBulkImports(user.id, files);
+    return this.imports.createBulkImports(user.sub, files);
   }
 
   @Get('import-jobs/:jobId')
-  getImportJob(@Param('jobId') jobId: string, @CurrentUser() user: AuthUser) {
-    return this.imports.getJob(jobId, user.id);
+  getImportJob(@Param('jobId') jobId: string, @ActiveUser() user: ActiveUserData) {
+    return this.imports.getJob(jobId, user.sub);
   }
 
   @Sse('import-jobs/:jobId/events')
   async watchImportJob(
     @Param('jobId') jobId: string,
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
   ): Promise<Observable<MessageEvent>> {
-    const job = await this.imports.getJob(jobId, user.id);
+    const job = await this.imports.getJob(jobId, user.sub);
     const toEvent = (data: object): MessageEvent => ({ data });
 
     if (job.status === 'done' || job.status === 'failed') {

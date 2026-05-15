@@ -7,7 +7,6 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import {
   createPricingGridSchema,
@@ -15,13 +14,10 @@ import {
   type CreatePricingGridDto,
   type UpdatePricingGridDto,
 } from '@org/schemas';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { PricingGridsService } from './pricing-grids.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('pricing-grids')
 export class PricingGridsController {
   constructor(private readonly pricing: PricingGridsService) {}

@@ -5,9 +5,8 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
+import type { AuthedRequest } from '../../interfaces/authed-request.interface';
 import { Roles } from '../decorators/roles.decorator';
-import type { AuthUser } from '../types/auth.types';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -23,8 +22,8 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = ctx.switchToHttp().getRequest<Request>();
-    const user = request.user as AuthUser | undefined;
+    const request = ctx.switchToHttp().getRequest<AuthedRequest>();
+    const user = request.user;
 
     if (!user) {
       throw new ForbiddenException('Utilisateur non authentifié');

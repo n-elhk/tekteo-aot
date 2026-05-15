@@ -6,12 +6,12 @@ import { QueueModule } from '../common/queue/queue.module';
 import { StorageModule } from '../common/storage/storage.module';
 import { AoFavoritesModule } from '../modules/ao-favorites/ao-favorites.module';
 import { AoModule } from '../modules/ao/ao.module';
-import { AuthModule } from '../modules/auth/auth.module';
 import { BpuModule } from '../modules/bpu/bpu.module';
 import { ConsultantsModule } from '../modules/consultants/consultants.module';
 import { CvVariantsModule } from '../modules/cv-variants/cv-variants.module';
 import { DashboardModule } from '../modules/dashboard/dashboard.module';
 import { GenerationHistoryModule } from '../modules/generation-history/generation-history.module';
+import { IamModule } from '../modules/iam/iam.module';
 import { JobProfilesModule } from '../modules/job-profiles/job-profiles.module';
 import { PricingGridsModule } from '../modules/pricing-grids/pricing-grids.module';
 import { ProjectDocumentsModule } from '../modules/project-documents/project-documents.module';
@@ -32,7 +32,7 @@ import { UsersModule } from '../modules/users/users.module';
     QueueModule,
     StorageModule,
     GenerationHistoryModule,
-    AuthModule,
+    IamModule,
     UsersModule,
     ProjectsModule,
     SectionsModule,

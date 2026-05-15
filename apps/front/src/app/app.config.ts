@@ -19,6 +19,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { refreshInterceptor } from './core/interceptors/refresh.interceptor';
 import { AuthService } from './core/auth/auth.service';
 
 // Enregistre les données de localisation française pour les pipes
@@ -37,7 +38,13 @@ export const appConfig: ApplicationConfig = {
       withViewTransitions(),
       withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' }),
     ),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    // L'ordre compte : `authInterceptor` ajoute `withCredentials` en premier
+    // afin que les cookies httpOnly soient envoyés par toutes les requêtes,
+    // y compris le rejeu déclenché par `refreshInterceptor`.
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([authInterceptor, refreshInterceptor]),
+    ),
     // Hydrate l'utilisateur courant depuis le cookie httpOnly avant le
     // premier rendu : les guards de routes lisent un état déjà cohérent
     // avec le serveur. Un 401 (session absente / expirée) est silencieux.

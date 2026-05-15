@@ -7,7 +7,6 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import {
   createSectionTemplateSchema,
@@ -15,15 +14,12 @@ import {
   type CreateSectionTemplateDto,
   type UpdateSectionTemplateDto,
 } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { SectionTemplatesService } from './section-templates.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('section-templates')
 export class SectionTemplatesController {
   constructor(private readonly templates: SectionTemplatesService) {}
@@ -43,11 +39,11 @@ export class SectionTemplatesController {
   @Post()
   @Roles(['admin'])
   create(
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(createSectionTemplateSchema))
     dto: CreateSectionTemplateDto,
   ) {
-    return this.templates.create(user.id, dto);
+    return this.templates.create(user.sub, dto);
   }
 
   @Patch(':id')

@@ -4,21 +4,17 @@ import {
   Get,
   Param,
   Patch,
-  UseGuards,
 } from '@nestjs/common';
 import {
   updateSystemPromptSchema,
   type UpdateSystemPromptDto,
 } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { SystemPromptsService } from './system-prompts.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('system-prompts')
 export class SystemPromptsController {
   constructor(private readonly prompts: SystemPromptsService) {}
@@ -38,11 +34,11 @@ export class SystemPromptsController {
   @Patch(':name')
   @Roles(['admin'])
   update(
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Param('name') name: string,
     @Body(new ZodValidationPipe(updateSystemPromptSchema))
     dto: UpdateSystemPromptDto,
   ) {
-    return this.prompts.update(name, user.id, dto);
+    return this.prompts.update(name, user.sub, dto);
   }
 }

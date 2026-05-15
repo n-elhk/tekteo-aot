@@ -7,25 +7,21 @@ import {
   HttpCode,
   Param,
   Patch,
-  UseGuards,
 } from '@nestjs/common';
 import { updateUserSchema, type UpdateUserDto } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { UsersService } from './users.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get('me')
-  findMe(@CurrentUser() user: AuthUser) {
-    return this.users.findOne(user.id);
+  findMe(@ActiveUser() user: ActiveUserData) {
+    return this.users.findOne(user.sub);
   }
 
   @Get()
@@ -44,11 +40,11 @@ export class UsersController {
   @Roles(['admin'])
   update(
     @Param('id') id: string,
-    @CurrentUser() currentUser: AuthUser,
+    @ActiveUser() currentUser: ActiveUserData,
     @Body(new ZodValidationPipe(updateUserSchema)) dto: UpdateUserDto,
   ) {
     // Anti self-lockout : un admin ne peut pas se rétrograder lui-même
-    if (id === currentUser.id && dto.role && dto.role !== 'admin') {
+    if (id === currentUser.sub && dto.role && dto.role !== 'admin') {
       throw new BadRequestException(
         "Vous ne pouvez pas modifier votre propre rôle (sécurité anti-self-lockout)",
       );
@@ -61,10 +57,10 @@ export class UsersController {
   @HttpCode(204)
   async remove(
     @Param('id') id: string,
-    @CurrentUser() currentUser: AuthUser,
+    @ActiveUser() currentUser: ActiveUserData,
   ) {
     // Anti self-lockout : un admin ne peut pas se supprimer lui-même
-    if (id === currentUser.id) {
+    if (id === currentUser.sub) {
       throw new BadRequestException(
         'Vous ne pouvez pas supprimer votre propre compte',
       );

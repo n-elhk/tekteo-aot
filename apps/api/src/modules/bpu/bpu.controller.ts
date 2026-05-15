@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import {
   bulkUpsertBpuLinesSchema,
@@ -19,13 +18,10 @@ import {
   type UpdateBpuLineDto,
 } from '@org/schemas';
 import type { BpuLineType } from '../../generated/prisma/client';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { BpuService } from './bpu.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class BpuController {
   constructor(private readonly bpu: BpuService) {}

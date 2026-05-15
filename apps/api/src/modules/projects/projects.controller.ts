@@ -7,7 +7,6 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import {
   createProjectSchema,
@@ -15,15 +14,12 @@ import {
   type CreateProjectDto,
   type UpdateProjectDto,
 } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { ProjectsService } from './projects.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projects: ProjectsService) {}
@@ -41,10 +37,10 @@ export class ProjectsController {
   @Post()
   @Roles(['admin', 'redacteur'])
   create(
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(createProjectSchema)) dto: CreateProjectDto,
   ) {
-    return this.projects.create(user.id, dto);
+    return this.projects.create(user.sub, dto);
   }
 
   @Patch(':id')

@@ -7,7 +7,6 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import {
   createJobProfileSchema,
@@ -17,15 +16,12 @@ import {
   type GenerateJobProfilesDto,
   type UpdateJobProfileDto,
 } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { JobProfilesService } from './job-profiles.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class JobProfilesController {
   constructor(private readonly profiles: JobProfilesService) {}
@@ -77,10 +73,10 @@ export class JobProfilesController {
   @HttpCode(200)
   generateBatch(
     @Param('projectId') projectId: string,
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(generateJobProfilesSchema))
     dto: GenerateJobProfilesDto,
   ) {
-    return this.profiles.generateBatch(projectId, user.id, dto);
+    return this.profiles.generateBatch(projectId, user.sub, dto);
   }
 }

@@ -1,15 +1,12 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import {
   generationHistoryQuerySchema,
   type GenerationHistoryQueryDto,
 } from '@org/schemas';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { GenerationHistoryService } from './generation-history.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class GenerationHistoryController {
   constructor(private readonly history: GenerationHistoryService) {}

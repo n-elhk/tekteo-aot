@@ -9,10 +9,9 @@ import { TemplateFillerService } from './template-filler.service';
 import { PdfRendererService } from './pdf-renderer.service';
 import { MasterCvPdfService } from './master-cv-pdf.service';
 import { CV_IMPORT_QUEUE } from '../../common/queue/queue.module';
-import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: CV_IMPORT_QUEUE }), AuthModule],
+  imports: [BullModule.registerQueue({ name: CV_IMPORT_QUEUE })],
   controllers: [ConsultantsController],
   providers: [
     ConsultantsService,

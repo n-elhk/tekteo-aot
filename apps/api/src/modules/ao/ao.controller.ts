@@ -5,7 +5,6 @@ import {
   HttpCode,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import {
   analyseAoSchema,
@@ -13,13 +12,11 @@ import {
   type AnalyseAoDto,
   type AoSearchQueryDto,
 } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { AoService } from './ao.service';
 
-@UseGuards(JwtAuthGuard)
 @Controller('ao')
 export class AoController {
   constructor(private readonly ao: AoService) {}
@@ -35,9 +32,9 @@ export class AoController {
   @Post('analyse')
   @HttpCode(200)
   analyse(
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(analyseAoSchema)) dto: AnalyseAoDto,
   ) {
-    return this.ao.analyse(user.id, dto);
+    return this.ao.analyse(user.sub, dto);
   }
 }

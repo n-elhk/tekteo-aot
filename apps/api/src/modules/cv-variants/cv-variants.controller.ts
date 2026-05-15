@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -19,17 +18,14 @@ import {
   type RegenerateCvVariantDto,
   type UpdateCvVariantDto,
 } from '@org/schemas';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { ActiveUser } from '../iam/decorators/active-user.decorator';
+import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import type { AuthUser } from '../../common/types/auth.types';
+import type { ActiveUserData } from '../iam/interfaces/active-user-data.interface';
 import { CvVariantsService } from './cv-variants.service';
 import { CvVariantPdfService } from './cv-variant-pdf.service';
 import { GeneratedCvsService } from './generated-cvs.service';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class CvVariantsController {
   constructor(
@@ -48,10 +44,10 @@ export class CvVariantsController {
   @HttpCode(201)
   create(
     @Param('consultantId') consultantId: string,
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(createCvVariantSchema)) dto: CreateCvVariantDto,
   ) {
-    return this.variants.create(consultantId, user.id, dto);
+    return this.variants.create(consultantId, user.sub, dto);
   }
 
   @Get('variants/:id')
@@ -80,18 +76,18 @@ export class CvVariantsController {
   @HttpCode(200)
   regenerate(
     @Param('id') id: string,
-    @CurrentUser() user: AuthUser,
+    @ActiveUser() user: ActiveUserData,
     @Body(new ZodValidationPipe(regenerateCvVariantSchema))
     _dto: RegenerateCvVariantDto,
   ) {
-    return this.variants.regenerate(id, user.id);
+    return this.variants.regenerate(id, user.sub);
   }
 
   @Post('variants/:id/generated-cvs')
   @Roles(['admin', 'redacteur'])
   @HttpCode(201)
-  triggerPdf(@Param('id') id: string, @CurrentUser() user: AuthUser) {
-    return this.variantPdf.render(id, user.id);
+  triggerPdf(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.variantPdf.render(id, user.sub);
   }
 
   @Get('variants/:variantId/generated-cvs/:genId/download')
