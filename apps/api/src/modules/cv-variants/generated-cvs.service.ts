@@ -5,7 +5,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { CvTemplateValue } from '@org/schemas';
 import {
   AbstractStorageService,
   type StoredFile,
@@ -23,15 +22,10 @@ export class GeneratedCvsService {
     private readonly storage: AbstractStorageService,
   ) {}
 
-  createPending(
-    consultantId: string,
-    template: CvTemplateValue,
-    userId: string,
-  ) {
+  createPending(variantId: string, userId: string) {
     return this.prisma.generatedCv.create({
       data: {
-        consultantId,
-        template,
+        variantId,
         status: 'pending',
         createdById: userId,
       },
@@ -66,38 +60,31 @@ export class GeneratedCvsService {
     });
   }
 
-  /**
-   * Persiste le buffer PDF dans le storage et lie le fichier au generatedCv.
-   */
   storePdf(
     generatedCvId: string,
-    consultantId: string,
+    variantId: string,
     buffer: Buffer,
     filename: string,
   ): Promise<StoredFile> {
     return this.storage.save(
-      join(STORAGE_SCOPE_ROOT, consultantId),
+      join(STORAGE_SCOPE_ROOT, variantId),
       `${generatedCvId}.pdf`,
       buffer,
     );
   }
 
-  async findOne(id: string, consultantId: string) {
+  async findOne(id: string, variantId: string) {
     const cv = await this.prisma.generatedCv.findFirst({
-      where: { id, consultantId },
+      where: { id, variantId },
     });
-    if (!cv) {
-      throw new NotFoundException(`CV généré ${id} introuvable`);
-    }
+    if (!cv) throw new NotFoundException(`CV généré ${id} introuvable`);
     return cv;
   }
 
-  async getDownload(id: string, consultantId: string) {
-    const cv = await this.findOne(id, consultantId);
+  async getDownload(id: string, variantId: string) {
+    const cv = await this.findOne(id, variantId);
     if (cv.status !== 'success' || !cv.outputPath) {
-      throw new ConflictException(
-        "Le CV n'est pas encore généré ou a échoué",
-      );
+      throw new ConflictException("Le CV n'est pas encore généré ou a échoué");
     }
     return {
       stream: this.storage.createReadStream(cv.outputPath),
@@ -105,26 +92,21 @@ export class GeneratedCvsService {
     };
   }
 
-  async remove(id: string, consultantId: string) {
-    const cv = await this.findOne(id, consultantId);
+  async remove(id: string, variantId: string) {
+    const cv = await this.findOne(id, variantId);
     if (cv.outputPath) {
       try {
         await this.storage.remove(cv.outputPath);
       } catch (err) {
-        this.logger.warn(
-          `Suppression fichier ${cv.outputPath} échouée : ${err}`,
-        );
+        this.logger.warn(`Suppression fichier ${cv.outputPath} échouée : ${err}`);
       }
     }
     await this.prisma.generatedCv.delete({ where: { id } });
   }
 
-  /**
-   * Purge les fichiers PDF d'un consultant avant la suppression cascade.
-   */
-  async purgeForConsultant(consultantId: string) {
+  async purgeForVariant(variantId: string) {
     const cvs = await this.prisma.generatedCv.findMany({
-      where: { consultantId, outputPath: { not: null } },
+      where: { variantId, outputPath: { not: null } },
       select: { id: true, outputPath: true },
     });
     for (const cv of cvs) {
@@ -132,9 +114,22 @@ export class GeneratedCvsService {
       try {
         await this.storage.remove(cv.outputPath);
       } catch (err) {
-        this.logger.warn(
-          `Purge fichier ${cv.outputPath} échouée : ${err}`,
-        );
+        this.logger.warn(`Purge fichier ${cv.outputPath} échouée : ${err}`);
+      }
+    }
+  }
+
+  async purgeForConsultant(consultantId: string) {
+    const cvs = await this.prisma.generatedCv.findMany({
+      where: { variant: { consultantId }, outputPath: { not: null } },
+      select: { id: true, outputPath: true },
+    });
+    for (const cv of cvs) {
+      if (!cv.outputPath) continue;
+      try {
+        await this.storage.remove(cv.outputPath);
+      } catch (err) {
+        this.logger.warn(`Purge fichier ${cv.outputPath} échouée : ${err}`);
       }
     }
   }
