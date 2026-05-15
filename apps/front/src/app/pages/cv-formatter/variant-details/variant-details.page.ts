@@ -1,11 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   inject,
   input,
-  OnInit,
   signal,
-  effect,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
@@ -89,7 +88,7 @@ import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service
     </div>
   `,
 })
-export class VariantDetailsPage implements OnInit {
+export class VariantDetailsPage {
   readonly id = input.required<string>();
   protected readonly store = inject(VariantDetailsStore);
   private readonly api = inject(CvVariantsService);
@@ -97,6 +96,7 @@ export class VariantDetailsPage implements OnInit {
   protected readonly cvDataDraft = signal<string>('');
 
   constructor() {
+    this.store.load(this.id);
     effect(() => {
       const v = this.store.variant();
       if (v) {
@@ -106,18 +106,14 @@ export class VariantDetailsPage implements OnInit {
     });
   }
 
-  ngOnInit() {
-    void this.store.load(this.id());
-  }
-
   protected saveName() {
-    void this.store.saveName(this.nameDraft());
+    this.store.saveName(this.nameDraft());
   }
 
   protected saveCvData() {
     try {
       const parsed = JSON.parse(this.cvDataDraft());
-      void this.store.saveCvData(parsed);
+      this.store.saveCvData(parsed);
     } catch {
       alert('JSON invalide');
     }

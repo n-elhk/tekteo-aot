@@ -6,7 +6,9 @@ import {
   withMethods,
   patchState,
 } from '@ngrx/signals';
-import { firstValueFrom } from 'rxjs';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { tapResponse } from '@ngrx/operators';
+import { EMPTY, forkJoin, pipe, switchMap } from 'rxjs';
 import { ConsultantsService } from '../../../core/consultants/consultants.service';
 import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import type { Consultant } from '../../../core/consultants/consultant.model';
@@ -37,54 +39,146 @@ export const ConsultantDetailsStore = signalStore(
     _variantsApi: inject(CvVariantsService),
   })),
   withMethods((store) => ({
-    async load(id: string) {
-      patchState(store, { loading: true, error: null });
-      try {
-        const [consultant, variants] = await Promise.all([
-          firstValueFrom(store._consultantsApi.findOne(id)),
-          firstValueFrom(store._variantsApi.listForConsultant(id)),
-        ]);
-        patchState(store, { consultant, variants, loading: false });
-      } catch (err) {
-        patchState(store, {
-          loading: false,
-          error: err instanceof Error ? err.message : 'Erreur de chargement',
-        });
-      }
-    },
-    async createVariant(dto: CreateCvVariantDto) {
-      const consultant = store.consultant();
-      if (!consultant) return;
-      const { variant } = await firstValueFrom(
-        store._variantsApi.create(consultant.id, dto),
-      );
-      patchState(store, { variants: [variant, ...store.variants()] });
-    },
-    async regenerateVariant(variantId: string) {
-      const { variant } = await firstValueFrom(
-        store._variantsApi.regenerate(variantId),
-      );
-      patchState(store, {
-        variants: store
-          .variants()
-          .map((v) => (v.id === variantId ? variant : v)),
-      });
-    },
-    async updateVariant(variantId: string, dto: UpdateCvVariantDto) {
-      const variant = await firstValueFrom(
-        store._variantsApi.update(variantId, dto),
-      );
-      patchState(store, {
-        variants: store
-          .variants()
-          .map((v) => (v.id === variantId ? variant : v)),
-      });
-    },
-    async deleteVariant(variantId: string) {
-      await firstValueFrom(store._variantsApi.remove(variantId));
-      patchState(store, {
-        variants: store.variants().filter((v) => v.id !== variantId),
-      });
-    },
+    load: rxMethod<string>(
+      pipe(
+        switchMap((id) => {
+          patchState(store, { loading: true, error: null });
+          return forkJoin({
+            consultant: store._consultantsApi.findOne(id),
+            variants: store._variantsApi.listForConsultant(id),
+          }).pipe(
+            tapResponse({
+              next: ({ consultant, variants }) =>
+                patchState(store, { consultant, variants, loading: false }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  loading: false,
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de chargement',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
+    createVariant: rxMethod<CreateCvVariantDto>(
+      pipe(
+        switchMap((dto) => {
+          const consultant = store.consultant();
+          if (!consultant) return EMPTY;
+          return store._variantsApi.create(consultant.id, dto).pipe(
+            tapResponse({
+              next: ({ variant }) =>
+                patchState(store, {
+                  variants: [variant, ...store.variants()],
+                }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de création de variante',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
+    regenerateVariant: rxMethod<string>(
+      pipe(
+        switchMap((variantId) =>
+          store._variantsApi.regenerate(variantId).pipe(
+            tapResponse({
+              next: ({ variant }) =>
+                patchState(store, {
+                  variants: store
+                    .variants()
+                    .map((v) => (v.id === variantId ? variant : v)),
+                }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de régénération',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
+    updateVariant: rxMethod<{ variantId: string; dto: UpdateCvVariantDto }>(
+      pipe(
+        switchMap(({ variantId, dto }) =>
+          store._variantsApi.update(variantId, dto).pipe(
+            tapResponse({
+              next: (variant) =>
+                patchState(store, {
+                  variants: store
+                    .variants()
+                    .map((v) => (v.id === variantId ? variant : v)),
+                }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de mise à jour',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
+    deleteVariant: rxMethod<string>(
+      pipe(
+        switchMap((variantId) =>
+          store._variantsApi.remove(variantId).pipe(
+            tapResponse({
+              next: () =>
+                patchState(store, {
+                  variants: store
+                    .variants()
+                    .filter((v) => v.id !== variantId),
+                }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de suppression',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
+    triggerVariantPdf: rxMethod<string>(
+      pipe(
+        switchMap((variantId) =>
+          store._variantsApi.triggerPdf(variantId).pipe(
+            tapResponse({
+              next: (generated) =>
+                patchState(store, {
+                  variants: store.variants().map((v) =>
+                    v.id === variantId
+                      ? { ...v, generatedCvs: [generated, ...v.generatedCvs] }
+                      : v,
+                  ),
+                }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de génération PDF',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
   })),
 );

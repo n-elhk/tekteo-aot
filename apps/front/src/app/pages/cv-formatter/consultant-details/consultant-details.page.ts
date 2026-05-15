@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  OnInit,
   input,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -14,7 +13,6 @@ import {
   CreateVariantDialog,
   type CreateVariantDialogData,
 } from '../create-variant-dialog';
-import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import type { CreateCvVariantDto } from '../../../core/cv-variants/cv-variant.model';
 import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
 
@@ -58,8 +56,8 @@ import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
           <h2 class="text-lg font-medium mb-2">Variantes</h2>
           <app-variants-list
             [variants]="store.variants()"
-            (regenerate)="onRegenerate($event)"
-            (generatePdf)="onGeneratePdf($event)"
+            (regenerate)="store.regenerateVariant($event)"
+            (generatePdf)="store.triggerVariantPdf($event)"
             (delete)="onDelete($event)"
           />
         </section>
@@ -67,14 +65,13 @@ import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
     </div>
   `,
 })
-export class ConsultantDetailsPage implements OnInit {
+export class ConsultantDetailsPage {
   readonly id = input.required<string>();
   protected readonly store = inject(ConsultantDetailsStore);
   private readonly dialog = inject(Dialog);
-  private readonly variantsApi = inject(CvVariantsService);
 
-  ngOnInit() {
-    void this.store.load(this.id());
+  constructor() {
+    this.store.load(this.id);
   }
 
   protected async openCreateVariant() {
@@ -92,21 +89,12 @@ export class ConsultantDetailsPage implements OnInit {
     });
     const result = await firstValueFrom(ref.closed);
     if (result) {
-      await this.store.createVariant(result);
+      this.store.createVariant(result);
     }
-  }
-
-  protected onRegenerate(id: string) {
-    void this.store.regenerateVariant(id);
-  }
-
-  protected async onGeneratePdf(id: string) {
-    await firstValueFrom(this.variantsApi.triggerPdf(id));
-    await this.store.load(this.id());
   }
 
   protected onDelete(id: string) {
     if (!confirm('Supprimer cette variante ?')) return;
-    void this.store.deleteVariant(id);
+    this.store.deleteVariant(id);
   }
 }

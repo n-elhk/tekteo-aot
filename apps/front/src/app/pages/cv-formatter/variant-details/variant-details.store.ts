@@ -6,7 +6,9 @@ import {
   withMethods,
   patchState,
 } from '@ngrx/signals';
-import { firstValueFrom } from 'rxjs';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { tapResponse } from '@ngrx/operators';
+import { EMPTY, pipe, switchMap } from 'rxjs';
 import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import type { CvVariant } from '../../../core/cv-variants/cv-variant.model';
 
@@ -24,41 +26,105 @@ export const VariantDetailsStore = signalStore(
     _api: inject(CvVariantsService),
   })),
   withMethods((store) => ({
-    async load(id: string) {
-      patchState(store, { loading: true, error: null });
-      try {
-        const variant = await firstValueFrom(store._api.findOne(id));
-        patchState(store, { variant, loading: false });
-      } catch (err) {
-        patchState(store, {
-          loading: false,
-          error: err instanceof Error ? err.message : 'Erreur',
-        });
-      }
-    },
-    async saveName(name: string) {
-      const v = store.variant();
-      if (!v) return;
-      const updated = await firstValueFrom(store._api.update(v.id, { name }));
-      patchState(store, { variant: updated });
-    },
-    async saveCvData(cvData: CvVariant['cvData']) {
-      const v = store.variant();
-      if (!v) return;
-      const updated = await firstValueFrom(store._api.update(v.id, { cvData }));
-      patchState(store, { variant: updated });
-    },
-    async regenerate() {
-      const v = store.variant();
-      if (!v) return;
-      const { variant } = await firstValueFrom(store._api.regenerate(v.id));
-      patchState(store, { variant });
-    },
-    async triggerPdf() {
-      const v = store.variant();
-      if (!v) return;
-      await firstValueFrom(store._api.triggerPdf(v.id));
-      await this.load(v.id);
-    },
+    load: rxMethod<string>(
+      pipe(
+        switchMap((id) => {
+          patchState(store, { loading: true, error: null });
+          return store._api.findOne(id).pipe(
+            tapResponse({
+              next: (variant) =>
+                patchState(store, { variant, loading: false }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  loading: false,
+                  error: err instanceof Error ? err.message : 'Erreur',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
+    saveName: rxMethod<string>(
+      pipe(
+        switchMap((name) => {
+          const v = store.variant();
+          if (!v) return EMPTY;
+          return store._api.update(v.id, { name }).pipe(
+            tapResponse({
+              next: (variant) => patchState(store, { variant }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de sauvegarde',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
+    saveCvData: rxMethod<CvVariant['cvData']>(
+      pipe(
+        switchMap((cvData) => {
+          const v = store.variant();
+          if (!v) return EMPTY;
+          return store._api.update(v.id, { cvData }).pipe(
+            tapResponse({
+              next: (variant) => patchState(store, { variant }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de sauvegarde',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
+    regenerate: rxMethod<void>(
+      pipe(
+        switchMap(() => {
+          const v = store.variant();
+          if (!v) return EMPTY;
+          return store._api.regenerate(v.id).pipe(
+            tapResponse({
+              next: ({ variant }) => patchState(store, { variant }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de régénération',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
+  })),
+  withMethods((store) => ({
+    triggerPdf: rxMethod<void>(
+      pipe(
+        switchMap(() => {
+          const v = store.variant();
+          if (!v) return EMPTY;
+          return store._api.triggerPdf(v.id).pipe(
+            tapResponse({
+              next: () => store.load(v.id),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de génération PDF',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
   })),
 );

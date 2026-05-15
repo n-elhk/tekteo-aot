@@ -8,7 +8,9 @@ import {
   withHooks,
   patchState,
 } from '@ngrx/signals';
-import { firstValueFrom } from 'rxjs';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { tapResponse } from '@ngrx/operators';
+import { pipe, switchMap } from 'rxjs';
 import { ConsultantsService } from '../../core/consultants/consultants.service';
 import type { ConsultantListItem } from '../../core/consultants/consultant.model';
 
@@ -39,32 +41,57 @@ export const ConsultantsStore = signalStore(
     pageCount: computed(() => Math.max(1, Math.ceil(total() / pageSize()))),
   })),
   withMethods((store) => ({
-    async loadPage(page: number, pageSize = store.pageSize()) {
-      patchState(store, { loading: true, error: null });
-      try {
-        const res = await firstValueFrom(store._api.list({ page, pageSize }));
-        patchState(store, {
-          items: res.items,
-          total: res.total,
-          page: res.page,
-          pageSize: res.pageSize,
-          loading: false,
-        });
-      } catch (err) {
-        patchState(store, {
-          loading: false,
-          error: err instanceof Error ? err.message : 'Erreur de chargement',
-        });
-      }
-    },
-    async remove(id: string) {
-      await firstValueFrom(store._api.remove(id));
-      await this.loadPage(store.page());
-    },
+    loadPage: rxMethod<number>(
+      pipe(
+        switchMap((page) => {
+          patchState(store, { loading: true, error: null });
+          return store._api.list({ page, pageSize: store.pageSize() }).pipe(
+            tapResponse({
+              next: (res) =>
+                patchState(store, {
+                  items: res.items,
+                  total: res.total,
+                  page: res.page,
+                  pageSize: res.pageSize,
+                  loading: false,
+                }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  loading: false,
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de chargement',
+                }),
+            }),
+          );
+        }),
+      ),
+    ),
+  })),
+  withMethods((store) => ({
+    remove: rxMethod<string>(
+      pipe(
+        switchMap((id) =>
+          store._api.remove(id).pipe(
+            tapResponse({
+              next: () => store.loadPage(store.page()),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de suppression',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
   })),
   withHooks({
     onInit(store) {
-      void store.loadPage(1);
+      store.loadPage(1);
     },
   }),
 );
