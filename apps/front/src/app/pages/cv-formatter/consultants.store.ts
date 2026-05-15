@@ -5,6 +5,7 @@ import {
   withProps,
   withMethods,
   withComputed,
+  withHooks,
   patchState,
 } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
@@ -61,4 +62,9 @@ export const ConsultantsStore = signalStore(
       await this.loadPage(store.page());
     },
   })),
+  withHooks({
+    onInit(store) {
+      void store.loadPage(1);
+    },
+  }),
 );

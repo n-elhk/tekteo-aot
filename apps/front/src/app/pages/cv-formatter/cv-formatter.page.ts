@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   inject,
-  OnInit,
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -105,13 +104,9 @@ type Panel = 'none' | 'import' | 'manual';
     </div>
   `,
 })
-export class CvFormatterPage implements OnInit {
+export class CvFormatterPage {
   protected readonly store = inject(ConsultantsStore);
   protected readonly panel = signal<Panel>('none');
-
-  ngOnInit() {
-    void this.store.loadPage(1);
-  }
 
   protected togglePanel(target: Exclude<Panel, 'none'>): void {
     this.panel.update((current) => (current === target ? 'none' : target));
