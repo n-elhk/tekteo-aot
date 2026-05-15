@@ -89,33 +89,33 @@ export const appRoutes: Route[] = [
           import('./pages/search/search.page').then((m) => m.SearchPage),
       },
       {
-        path: 'cv-formatter',
-        title: 'CV Formatter · Tekteo',
+        path: 'consultants',
+        title: 'Consultants · Tekteo',
         loadComponent: () =>
-          import('./pages/cv-formatter/cv-formatter.page').then((m) => m.CvFormatterPage),
+          import('./pages/consultants/consultants.page').then((m) => m.ConsultantsPage),
       },
       {
-        path: 'cv-formatter/new',
+        path: 'consultants/new',
         title: 'Nouveau consultant · Tekteo',
         loadComponent: () =>
-          import('./pages/cv-formatter/consultant-create/consultant-create.page').then(
+          import('./pages/consultants/consultant-create/consultant-create.page').then(
             (m) => m.ConsultantCreatePage,
           ),
       },
       {
-        path: 'cv-formatter/consultants/:id',
-        title: 'Consultant · Tekteo',
+        path: 'consultants/variants/:id',
+        title: 'Variante de CV · Tekteo',
         loadComponent: () =>
-          import('./pages/cv-formatter/consultant-details/consultant-details.page').then(
-            (m) => m.ConsultantDetailsPage,
+          import('./pages/consultants/variant-details/variant-details.page').then(
+            (m) => m.VariantDetailsPage,
           ),
       },
       {
-        path: 'cv-formatter/variants/:id',
-        title: 'Variante de CV · Tekteo',
+        path: 'consultants/:id',
+        title: 'Consultant · Tekteo',
         loadComponent: () =>
-          import('./pages/cv-formatter/variant-details/variant-details.page').then(
-            (m) => m.VariantDetailsPage,
+          import('./pages/consultants/consultant-details/consultant-details.page').then(
+            (m) => m.ConsultantDetailsPage,
           ),
       },
       {

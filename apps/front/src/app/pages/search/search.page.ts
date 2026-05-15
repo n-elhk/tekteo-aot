@@ -105,7 +105,7 @@ export class SearchPage {
         title: consultantFullName(cv),
         subtitle: cv.role ?? '',
         snippet: snippetAround(buildCvHaystack(cv), q, 60),
-        link: ['/cv-formatter', 'consultants', cv.id],
+        link: ['/consultants', cv.id],
       }));
 
     return [...projectHits, ...cvHits];

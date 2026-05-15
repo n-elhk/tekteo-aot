@@ -13,7 +13,7 @@ import { Card } from '../../shared/ui/card/card';
 import type { ConsultantListItem } from '../../core/consultants/consultant.model';
 
 @Component({
-  selector: 'app-cv-formatter',
+  selector: 'app-consultants',
   imports: [RouterLink, DatePipe, Button, Card],
   providers: [ConsultantsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,7 +35,7 @@ import type { ConsultantListItem } from '../../core/consultants/consultant.model
             }
           </p>
         </div>
-        <a routerLink="/cv-formatter/new">
+        <a routerLink="/consultants/new">
           <app-button variant="primary">
             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -95,7 +95,7 @@ import type { ConsultantListItem } from '../../core/consultants/consultant.model
               Importez un CV existant ou créez un consultant manuellement pour démarrer.
             </p>
             @if (store.items().length === 0) {
-              <a routerLink="/cv-formatter/new" class="mt-6">
+              <a routerLink="/consultants/new" class="mt-6">
                 <app-button variant="primary">Ajouter un consultant</app-button>
               </a>
             }
@@ -106,7 +106,7 @@ import type { ConsultantListItem } from '../../core/consultants/consultant.model
           @for (c of filtered(); track c.id) {
             <li>
               <a
-                [routerLink]="['/cv-formatter', 'consultants', c.id]"
+                [routerLink]="['/consultants', c.id]"
                 class="group flex w-full items-center gap-4 rounded-2xl border border-surface-200/70 bg-white px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.25)]"
               >
                 <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 font-semibold text-brand-700">
@@ -124,7 +124,7 @@ import type { ConsultantListItem } from '../../core/consultants/consultant.model
                   </p>
                 </div>
                 <div class="flex shrink-0 items-center gap-3 text-sm">
-                  @if (c._count?.variants ?? 0; as nb) {
+                  @if (c._count.variants; as nb) {
                     <span class="hidden items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 sm:inline-flex">
                       <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m-7 5h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -154,7 +154,7 @@ import type { ConsultantListItem } from '../../core/consultants/consultant.model
     </div>
   `,
 })
-export class CvFormatterPage {
+export class ConsultantsPage {
   protected readonly store = inject(ConsultantsStore);
   protected readonly search = signal('');
 
@@ -172,7 +172,7 @@ export class CvFormatterPage {
   });
 
   protected readonly totalVariants = computed(() =>
-    this.store.items().reduce((acc, c) => acc + (c._count?.variants ?? 0), 0),
+    this.store.items().reduce((acc, c) => acc + (c._count.variants), 0),
   );
 
   protected initials(c: ConsultantListItem): string {

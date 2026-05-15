@@ -17,7 +17,7 @@ import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="p-6 flex flex-col gap-4">
-      <a routerLink="/cv-formatter" class="text-sm text-blue-600 hover:underline">← Retour</a>
+      <a routerLink="/consultants" class="text-sm text-blue-600 hover:underline">← Retour</a>
 
       @if (store.loading()) {
         <p>Chargement…</p>

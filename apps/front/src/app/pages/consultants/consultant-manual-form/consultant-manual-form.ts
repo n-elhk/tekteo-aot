@@ -173,11 +173,7 @@ export class ConsultantManualForm {
             });
             this.model.set(structuredClone(EMPTY_STATE));
             this.created.emit();
-            await this.router.navigate([
-              '/cv-formatter',
-              'consultants',
-              consultant.id,
-            ]);
+            await this.router.navigate(['/consultants', consultant.id]);
             return undefined;
           } catch (err: unknown) {
             this.toaster.error({

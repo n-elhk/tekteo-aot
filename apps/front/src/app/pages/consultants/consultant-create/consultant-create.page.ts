@@ -18,7 +18,7 @@ type Mode = 'pick' | 'import' | 'manual';
   template: `
     <div class="space-y-6">
       <a
-        routerLink="/cv-formatter"
+        routerLink="/consultants"
         class="inline-flex items-center gap-1.5 text-sm font-medium text-surface-900/60 hover:text-brand-700 transition"
       >
         <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -127,6 +127,6 @@ export class ConsultantCreatePage {
   protected readonly mode = signal<Mode>('pick');
 
   protected onDone() {
-    void this.router.navigate(['/cv-formatter']);
+    void this.router.navigate(['/consultants']);
   }
 }

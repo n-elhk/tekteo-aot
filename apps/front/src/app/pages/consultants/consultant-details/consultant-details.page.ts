@@ -26,7 +26,7 @@ import {
   template: `
     <div class="space-y-6">
       <a
-        routerLink="/cv-formatter"
+        routerLink="/consultants"
         class="inline-flex items-center gap-1.5 text-sm font-medium text-surface-900/60 hover:text-brand-700 transition"
       >
         <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

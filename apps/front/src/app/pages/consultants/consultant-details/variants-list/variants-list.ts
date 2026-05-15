@@ -23,7 +23,7 @@ import type { CvVariant } from '../../../../core/cv-variants/cv-variant.model';
             <article class="group rounded-xl border border-surface-200/70 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.2)]">
               <div class="flex items-start justify-between gap-3">
                 <a
-                  [routerLink]="['/cv-formatter', 'variants', v.id]"
+                  [routerLink]="['/consultants', 'variants', v.id]"
                   class="min-w-0 flex-1"
                 >
                   <p class="truncate font-medium text-surface-900 group-hover:text-brand-800">
