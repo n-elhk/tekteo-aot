@@ -7,6 +7,8 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { Dialog } from '@angular/cdk/dialog';
+import { filter } from 'rxjs';
 import {
   applyEach,
   form,
@@ -21,6 +23,11 @@ import { VariantDetailsStore } from './variant-details.store';
 import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import { Button } from '../../../shared/ui/button/button';
 import { ToastService } from '../../../core/notifications/toast.service';
+import { APP_DIALOG_CONFIG } from '../../../core/dialog/dialog.config';
+import {
+  ConfirmDialog,
+  type ConfirmDialogData,
+} from '../../../shared/ui/confirm-dialog/confirm-dialog';
 
 interface IdentityState {
   firstName: string;
@@ -162,6 +169,7 @@ export class VariantDetailsPage {
   protected readonly store = inject(VariantDetailsStore);
   private readonly api = inject(CvVariantsService);
   private readonly toaster = inject(ToastService);
+  private readonly dialog = inject(Dialog);
 
   protected readonly nameDraft = linkedSignal<string>(
     () => this.store.variant()?.name ?? '',
@@ -222,6 +230,24 @@ export class VariantDetailsPage {
 
   protected downloadUrl(variantId: string, genId: string): string {
     return this.api.downloadPdfUrl(variantId, genId);
+  }
+
+  protected confirmDeletePdf(genId: string, filename: string | null): void {
+    const ref = this.dialog.open<boolean, ConfirmDialogData, ConfirmDialog>(
+      ConfirmDialog,
+      {
+        ...APP_DIALOG_CONFIG,
+        data: {
+          title: 'Supprimer ce PDF ?',
+          description: `« ${filename ?? genId} » sera définitivement supprimé.`,
+          confirmLabel: 'Supprimer',
+          variant: 'danger',
+        },
+      },
+    );
+    ref.closed.pipe(filter(Boolean)).subscribe(() => {
+      this.store.deletePdf(genId);
+    });
   }
 
   // ----- Skills -----

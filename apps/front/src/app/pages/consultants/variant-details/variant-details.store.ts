@@ -136,6 +136,37 @@ export const VariantDetailsStore = signalStore(
         ),
       ),
     ),
+    deletePdf: rxMethod<string>(
+      pipe(
+        map((genId) => {
+          const v = store.variant();
+          return v ? { genId, variant: v } : null;
+        }),
+        filter(Boolean),
+        switchMap(({ genId, variant }) =>
+          store._api.removePdf(variant.id, genId).pipe(
+            tapResponse({
+              next: () =>
+                patchState(store, {
+                  variant: {
+                    ...variant,
+                    generatedCvs: variant.generatedCvs.filter(
+                      (g) => g.id !== genId,
+                    ),
+                  },
+                }),
+              error: (err: unknown) =>
+                patchState(store, {
+                  error:
+                    err instanceof Error
+                      ? err.message
+                      : 'Erreur de suppression du PDF',
+                }),
+            }),
+          ),
+        ),
+      ),
+    ),
   })),
   withHooks({
     onInit(store) {
