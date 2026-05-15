@@ -15,7 +15,7 @@ import type { CreateCvVariantDto } from '../../../core/cv-variants/cv-variant.mo
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="p-6 flex flex-col gap-6">
-      <a routerLink="/cv" class="text-sm text-blue-600 hover:underline">← Retour à la liste</a>
+      <a routerLink="/cv-formatter" class="text-sm text-blue-600 hover:underline">← Retour à la liste</a>
 
       @if (store.loading()) {
         <p>Chargement…</p>

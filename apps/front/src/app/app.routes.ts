@@ -89,16 +89,26 @@ export const appRoutes: Route[] = [
           import('./pages/search/search.page').then((m) => m.SearchPage),
       },
       {
-        path: 'cv',
+        path: 'cv-formatter',
         title: 'CV Formatter · Tekteo',
         loadComponent: () =>
           import('./pages/cv-formatter/cv-formatter.page').then((m) => m.CvFormatterPage),
       },
       {
-        path: 'cv/:id',
-        title: 'CV consultant · Tekteo',
+        path: 'cv-formatter/consultants/:id',
+        title: 'Consultant · Tekteo',
         loadComponent: () =>
-          import('./pages/cv-formatter/cv-details/cv-detail.page').then((m) => m.CvDetailPage),
+          import('./pages/cv-formatter/consultant-details/consultant-details.page').then(
+            (m) => m.ConsultantDetailsPage,
+          ),
+      },
+      {
+        path: 'cv-formatter/variants/:id',
+        title: 'Variante de CV · Tekteo',
+        loadComponent: () =>
+          import('./pages/cv-formatter/variant-details/variant-details.page').then(
+            (m) => m.VariantDetailsPage,
+          ),
       },
       {
         path: 'admin',
