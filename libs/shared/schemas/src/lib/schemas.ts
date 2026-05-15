@@ -441,7 +441,7 @@ export const cvImportStatusSchema = z.enum([
 export type CvImportStatusValue = z.infer<typeof cvImportStatusSchema>;
 
 /**
- * DTO de la requête `POST /consultant-cvs/import-from-file`.
+ * DTO de la requête `POST /consultants/import/file`.
  * Le fichier est transmis en multipart côté HTTP — ce schéma ne valide
  * que les champs textes (templateId). Les contraintes sur le fichier
  * (taille ≤ 10 Mo, mime application/pdf | application/vnd.openxmlformats…)
@@ -452,7 +452,7 @@ export const cvImportFromFileSchema = z.object({
 });
 export type CvImportFromFileDto = z.infer<typeof cvImportFromFileSchema>;
 
-/** Réponse de `GET /consultant-cvs/import-jobs/:jobId` */
+/** Réponse de `GET /consultants/import-jobs/:jobId` */
 export const cvImportJobSchema = z.object({
   jobId: z.uuid(),
   status: cvImportStatusSchema,
@@ -494,7 +494,7 @@ export const generatedCvSchema = z.object({
 });
 export type GeneratedCvDto = z.infer<typeof generatedCvSchema>;
 
-/** Body POST /consultant-cvs/:id/generate */
+/** Body POST /variants/:id/generated-cvs */
 export const generateCvFromTemplateSchema = z.object({
   template: cvTemplateSchema,
 });
