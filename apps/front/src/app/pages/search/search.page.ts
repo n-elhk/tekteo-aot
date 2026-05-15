@@ -4,8 +4,8 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { combineLatest, map } from 'rxjs';
 import type { Project } from '@org/types';
 import { ProjectsService } from '../../core/projects/projects.service';
-import { ConsultantCvsService } from '../../core/consultant-cvs/consultant-cvs.service';
-import type { ConsultantCv } from '../../core/consultant-cvs/consultant-cv.model';
+import { ConsultantsService } from '../../core/consultants/consultants.service';
+import type { ConsultantListItem } from '../../core/consultants/consultant.model';
 import { Card } from '../../shared/ui/card/card';
 import { Button } from '../../shared/ui/button/button';
 import { ProjectStatusBadge } from '../../shared/ui/project-status-badge/project-status-badge';
@@ -34,7 +34,7 @@ type Hit = ProjectHit | CvHit;
 
 interface SearchData {
   readonly projects: ReadonlyArray<Project>;
-  readonly cvs: ReadonlyArray<ConsultantCv>;
+  readonly cvs: ReadonlyArray<ConsultantListItem>;
 }
 
 const MIN_QUERY_LENGTH = 2;
@@ -55,7 +55,7 @@ const MIN_QUERY_LENGTH = 2;
 })
 export class SearchPage {
   private readonly projectsService = inject(ProjectsService);
-  private readonly cvsService = inject(ConsultantCvsService);
+  private readonly consultantsService = inject(ConsultantsService);
 
   protected readonly minQueryLength = MIN_QUERY_LENGTH;
 
@@ -67,7 +67,7 @@ export class SearchPage {
     stream: () =>
       combineLatest([
         this.projectsService.list(),
-        this.cvsService.list({ page: 1, pageSize: 100 }),
+        this.consultantsService.list({ page: 1, pageSize: 100 }),
       ]).pipe(
         map(([projects, page]): SearchData => ({
           projects,
@@ -102,10 +102,10 @@ export class SearchPage {
       .map<CvHit>((cv) => ({
         type: 'cv',
         id: cv.id,
-        title: cv.consultantName ?? 'CV consultant',
-        subtitle: cv.consultantTitle ?? '',
+        title: consultantFullName(cv),
+        subtitle: cv.role ?? '',
         snippet: snippetAround(buildCvHaystack(cv), q, 60),
-        link: ['/cv', cv.id],
+        link: ['/cv-formatter', 'consultants', cv.id],
       }));
 
     return [...projectHits, ...cvHits];
@@ -141,8 +141,13 @@ function projectMatches(project: Project, query: string): boolean {
   return buildProjectHaystack(project).toLowerCase().includes(query);
 }
 
-function cvMatches(cv: ConsultantCv, query: string): boolean {
+function cvMatches(cv: ConsultantListItem, query: string): boolean {
   return buildCvHaystack(cv).toLowerCase().includes(query);
+}
+
+function consultantFullName(cv: ConsultantListItem): string {
+  const full = `${cv.firstName} ${cv.lastName}`.trim();
+  return full.length > 0 ? full : 'Consultant sans nom';
 }
 
 function buildProjectHaystack(project: Project): string {
@@ -156,8 +161,11 @@ function buildProjectHaystack(project: Project): string {
   ].join(' ');
 }
 
-function buildCvHaystack(cv: ConsultantCv): string {
-  const identity = (cv.cvData as { identity?: Record<string, unknown> } | null)?.identity ?? {};
-  const flat = Object.values(identity).filter((v): v is string => typeof v === 'string').join(' ');
-  return [cv.consultantName ?? '', cv.consultantTitle ?? '', flat].join(' ');
+function buildCvHaystack(cv: ConsultantListItem): string {
+  return [
+    consultantFullName(cv),
+    cv.role ?? '',
+    cv.email ?? '',
+    cv.location ?? '',
+  ].join(' ');
 }

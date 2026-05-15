@@ -9,7 +9,7 @@ import type {
   CvGenerationStatusValue,
   CvTemplateValue,
   GeneratedCvDto,
-} from '../../core/consultant-cvs/consultant-cv.model';
+} from '@org/schemas';
 
 interface StatusBadge {
   readonly label: string;
