@@ -10,7 +10,7 @@ import {
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
-import { EMPTY, map, pipe, switchMap } from 'rxjs';
+import { EMPTY, filter, map, pipe, switchMap } from 'rxjs';
 import { CvVariantsService } from '../../../core/cv-variants/cv-variants.service';
 import type { CvVariant } from '../../../core/cv-variants/cv-variant.model';
 
@@ -31,8 +31,8 @@ export const VariantDetailsStore = signalStore(
   withMethods((store) => ({
     load: rxMethod<string>(
       pipe(
+        filter(Boolean),
         switchMap((id) => {
-          if (!id) return EMPTY;
           patchState(store, { loading: true, error: null });
           return store._api.findOne(id).pipe(
             tapResponse({
