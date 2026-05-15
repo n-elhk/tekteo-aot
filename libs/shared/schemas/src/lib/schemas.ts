@@ -570,6 +570,28 @@ export type ConsultantCvsListQueryDto = z.infer<
 >;
 
 // ============================================================
+// CvVariant schemas
+// ============================================================
+
+export const createCvVariantSchema = z.object({
+  jobProfileId: z.uuid(),
+  template: cvTemplateSchema,
+  name: z.string().min(1).max(300).optional(),
+});
+export type CreateCvVariantDto = z.infer<typeof createCvVariantSchema>;
+
+export const updateCvVariantSchema = z.object({
+  cvData: cvDataSchema.optional(),
+  name: z.string().min(1).max(300).optional(),
+});
+export type UpdateCvVariantDto = z.infer<typeof updateCvVariantSchema>;
+
+export const regenerateCvVariantSchema = z.object({
+  model: z.string().min(2).max(80).optional(),
+});
+export type RegenerateCvVariantDto = z.infer<typeof regenerateCvVariantSchema>;
+
+// ============================================================
 // AO (BOAMP) schemas
 // ============================================================
 
