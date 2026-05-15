@@ -5,113 +5,156 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { ConsultantsStore } from './consultants.store';
 import { Button } from '../../shared/ui/button/button';
+import { Card } from '../../shared/ui/card/card';
 import type { ConsultantListItem } from '../../core/consultants/consultant.model';
 
 @Component({
   selector: 'app-cv-formatter',
-  imports: [RouterLink, DatePipe, Button],
+  imports: [RouterLink, DatePipe, Button, Card],
   providers: [ConsultantsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="p-6 max-w-7xl mx-auto flex flex-col gap-6">
-      <header class="flex items-end justify-between flex-wrap gap-4">
+    <div class="space-y-6">
+      <!-- En-tête -->
+      <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 class="text-3xl font-semibold text-gray-900">Consultants</h1>
-          <p class="text-sm text-gray-500 mt-1">
-            {{ totalLabel() }} · gérez les CV maîtres et leurs variantes.
+          <p class="text-sm font-medium text-brand-700">Mes consultants</p>
+          <h1 class="mt-1 text-3xl font-semibold tracking-tight text-surface-900">
+            Roster des consultants
+          </h1>
+          <p class="mt-1 text-sm text-surface-900/60">
+            @if (!store.loading()) {
+              {{ store.total() }} consultant{{ store.total() > 1 ? 's' : '' }} ·
+              {{ totalVariants() }} variante{{ totalVariants() > 1 ? 's' : '' }} de CV générée{{ totalVariants() > 1 ? 's' : '' }}.
+            } @else {
+              Chargement&hellip;
+            }
           </p>
         </div>
-        <div class="flex items-center gap-2">
-          <div class="relative">
-            <input
-              type="search"
-              [value]="search()"
-              (input)="search.set($any($event.target).value)"
-              placeholder="Rechercher un nom, un email…"
-              class="w-72 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
-            />
-            <span
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
-              aria-hidden="true"
-            >⌕</span>
-          </div>
-          <app-button
-            variant="primary"
-            (click)="goToNew()"
-          >
-            + Ajouter un consultant
+        <a routerLink="/cv-formatter/new">
+          <app-button variant="primary">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Ajouter un consultant
           </app-button>
-        </div>
+        </a>
       </header>
 
-      @if (store.loading() && store.items().length === 0) {
-        <div class="text-center py-16 text-gray-400">
-          Chargement…
-        </div>
-      } @else if (store.error(); as err) {
-        <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {{ err }}
+      <!-- Recherche -->
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <label class="relative flex-1 max-w-md">
+          <span class="sr-only">Rechercher un consultant</span>
+          <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" />
+          </svg>
+          <input
+            type="search"
+            [value]="search()"
+            (input)="search.set($any($event.target).value)"
+            placeholder="Rechercher par nom, email, rôle…"
+            class="block w-full rounded-xl border border-surface-200 bg-white pl-9 pr-3 py-2.5 text-sm shadow-sm placeholder:text-surface-900/40 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none transition"
+          />
+        </label>
+      </div>
+
+      <!-- États -->
+      @if (store.error(); as msg) {
+        <app-card>
+          <div class="flex items-center justify-between gap-3" role="alert">
+            <p class="text-sm text-red-700">{{ msg }}</p>
+            <app-button variant="secondary" (click)="store.loadPage(store.page())">Réessayer</app-button>
+          </div>
+        </app-card>
+      } @else if (store.loading() && store.items().length === 0) {
+        <div class="grid gap-3">
+          @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+            <div class="h-20 animate-pulse rounded-2xl bg-surface-100"></div>
+          }
         </div>
       } @else if (filtered().length === 0) {
-        <div class="bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
-          @if (search()) {
-            <p class="text-gray-500">Aucun consultant ne correspond à « {{ search() }} ».</p>
-          } @else {
-            <p class="text-gray-700 font-medium">Aucun consultant pour l'instant</p>
-            <p class="text-gray-500 text-sm mt-2 mb-6">
-              Commencez par importer un CV ou en créer un manuellement.
+        <app-card>
+          <div class="flex flex-col items-center justify-center py-16 text-center">
+            <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+              <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 14a4 4 0 10-8 0M12 11a4 4 0 110-8 4 4 0 010 8zM4 21a8 8 0 0116 0" />
+              </svg>
+            </span>
+            <p class="mt-4 text-base font-medium text-surface-900">
+              @if (store.items().length === 0) {
+                Aucun consultant pour le moment.
+              } @else {
+                Aucun consultant ne correspond à votre recherche.
+              }
             </p>
-            <app-button variant="primary" (click)="goToNew()">
-              + Ajouter un consultant
-            </app-button>
-          }
-        </div>
+            <p class="mt-1 max-w-sm text-sm text-surface-900/60">
+              Importez un CV existant ou créez un consultant manuellement pour démarrer.
+            </p>
+            @if (store.items().length === 0) {
+              <a routerLink="/cv-formatter/new" class="mt-6">
+                <app-button variant="primary">Ajouter un consultant</app-button>
+              </a>
+            }
+          </div>
+        </app-card>
       } @else {
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ul class="grid grid-cols-1 gap-3">
           @for (c of filtered(); track c.id) {
-            <a
-              [routerLink]="['/cv-formatter', 'consultants', c.id]"
-              class="bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-500 hover:shadow-md transition-all flex flex-col gap-3 group"
-            >
-              <div class="flex items-start gap-3">
-                <span
-                  class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-semibold shrink-0"
-                  aria-hidden="true"
-                >
+            <li>
+              <a
+                [routerLink]="['/cv-formatter', 'consultants', c.id]"
+                class="group flex w-full items-center gap-4 rounded-2xl border border-surface-200/70 bg-white px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_18px_40px_-16px_rgb(59_99_255/0.25)]"
+              >
+                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 font-semibold text-brand-700">
                   {{ initials(c) }}
                 </span>
-                <div class="flex-1 min-w-0">
-                  <h2 class="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-semibold text-surface-900 group-hover:text-brand-800">
                     {{ c.firstName }} {{ c.lastName }}
-                  </h2>
-                  <p class="text-xs text-gray-500 truncate">{{ c.role ?? '—' }}</p>
+                  </p>
+                  @if (c.role) {
+                    <p class="truncate text-sm text-surface-900/60">{{ c.role }}</p>
+                  }
+                  <p class="mt-0.5 truncate text-xs text-surface-900/40">
+                    {{ c.email }}
+                  </p>
                 </div>
-              </div>
-
-              <p class="text-sm text-gray-600 truncate">
-                {{ c.email }}
-              </p>
-
-              <div class="flex items-center justify-between pt-2 border-t border-gray-100 text-xs text-gray-500">
-                <span class="inline-flex items-center gap-1">
-                  <span class="font-medium text-gray-700">{{ c._count?.variants ?? 0 }}</span>
-                  variante{{ (c._count?.variants ?? 0) > 1 ? 's' : '' }}
-                </span>
-                <span>{{ c.createdAt | date: 'dd/MM/yyyy' }}</span>
-              </div>
-            </a>
+                <div class="flex shrink-0 items-center gap-3 text-sm">
+                  @if (c._count?.variants ?? 0; as nb) {
+                    <span class="hidden items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 sm:inline-flex">
+                      <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m-7 5h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      {{ nb }} variante{{ nb > 1 ? 's' : '' }}
+                    </span>
+                  } @else {
+                    <span class="hidden rounded-full bg-surface-100 px-2.5 py-1 text-xs font-medium text-surface-900/60 sm:inline-flex">
+                      Sans variante
+                    </span>
+                  }
+                  <span class="hidden items-center gap-1.5 text-surface-900/60 sm:inline-flex">
+                    <svg viewBox="0 0 24 24" class="h-4 w-4 text-surface-900/40" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 8h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                    </svg>
+                    {{ c.createdAt | date: 'dd MMM yyyy' }}
+                  </span>
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 text-surface-900/30 transition group-hover:translate-x-0.5 group-hover:text-brand-700" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </a>
+            </li>
           }
-        </div>
+        </ul>
       }
     </div>
   `,
 })
 export class CvFormatterPage {
-  private readonly router = inject(Router);
   protected readonly store = inject(ConsultantsStore);
   protected readonly search = signal('');
 
@@ -128,20 +171,13 @@ export class CvFormatterPage {
     });
   });
 
-  protected readonly totalLabel = computed(() => {
-    const n = this.store.total();
-    return n === 0
-      ? '0 consultant'
-      : `${n} consultant${n > 1 ? 's' : ''}`;
-  });
+  protected readonly totalVariants = computed(() =>
+    this.store.items().reduce((acc, c) => acc + (c._count?.variants ?? 0), 0),
+  );
 
   protected initials(c: ConsultantListItem): string {
     const first = c.firstName?.[0] ?? '';
     const last = c.lastName?.[0] ?? '';
     return (first + last).toUpperCase() || '?';
-  }
-
-  protected goToNew() {
-    void this.router.navigate(['/cv-formatter/new']);
   }
 }
