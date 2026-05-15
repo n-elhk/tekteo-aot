@@ -313,7 +313,7 @@ export const updateDocumentSchema = z.object({
 export type UpdateDocumentDto = z.infer<typeof updateDocumentSchema>;
 
 // ============================================================
-// ConsultantCv schemas
+// CV data schemas
 // ============================================================
 
 const cvIdentitySchema = z.object({
@@ -425,41 +425,6 @@ export const consultantsListQuerySchema = z.object({
 });
 export type ConsultantsListQueryDto = z.infer<typeof consultantsListQuerySchema>;
 
-export const createConsultantCvSchema = z.object({
-  cvData: cvDataSchema,
-  consultantName: z
-    .string()
-    .min(1, { message: 'Le nom est requis' })
-    .max(200),
-  consultantTitle: z
-    .string()
-    .min(1, { message: 'L\'intitulé est requis' })
-    .max(200),
-});
-export type CreateConsultantCvDto = z.infer<typeof createConsultantCvSchema>;
-
-export const updateConsultantCvSchema = createConsultantCvSchema.partial();
-export type UpdateConsultantCvDto = z.infer<typeof updateConsultantCvSchema>;
-
-export const formatCvFromTextSchema = z.object({
-  cvText: z
-    .string()
-    .min(50, { message: 'Le texte du CV doit contenir au moins 50 caractères' })
-    .max(50000),
-  model: z.string().min(2).max(80).optional(),
-  /** Persiste automatiquement le résultat en base. */
-  persist: z.boolean().default(true),
-});
-export type FormatCvFromTextDto = z.infer<typeof formatCvFromTextSchema>;
-
-export const adaptCvToJobSchema = z.object({
-  jobProfileId: z.uuid(),
-  model: z.string().min(2).max(80).optional(),
-  /** Si true, lie le CV adapté à la fiche de poste cible. */
-  link: z.boolean().default(false),
-});
-export type AdaptCvToJobDto = z.infer<typeof adaptCvToJobSchema>;
-
 // ============================================================
 // CV Import (PDF/DOCX → CvData via worker IA)
 // ============================================================
@@ -559,15 +524,6 @@ export const cvJobEventSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 export type CvJobEventDto = z.infer<typeof cvJobEventSchema>;
-
-/** Pagination — query params de GET /consultant-cvs */
-export const consultantCvsListQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).default(20),
-});
-export type ConsultantCvsListQueryDto = z.infer<
-  typeof consultantCvsListQuerySchema
->;
 
 // ============================================================
 // CvVariant schemas
